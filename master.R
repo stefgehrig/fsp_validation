@@ -1,41 +1,37 @@
 # stefan gehrig, 2024-02-12
-# last update of folder 'FSP_Exchange' from sharepoint: 2024-12-02, 12:30
+# last update of folder 'FSP_Exchange' from share point: 2024-12-02, 17:00
 
-##############################
-#### import and configure ####
-##############################
+#######################################
+#### import and configure: general ####
+#######################################
 # libraries
 library(tidyverse)
 library(pROC)
 
-# import analysis excel sheets
-oview <- as_tibble(openxlsx::read.xlsx("FSP_Exchange/data/Overview_Stat_Analyses.xlsx", 
-                                       sheet = "Statistics", 
-                                       rows = 2:2e2,
-                                       detectDates = TRUE))
-prevs <- as_tibble(openxlsx::read.xlsx("FSP_Exchange/data/Overview_Stat_Analyses.xlsx", 
-                                       sheet = "Prevalence"))
+# import overview table
+oview <- import_overview()
 
-# reshape to have end points in long format
-oview %>% 
-  pivot_longer(cols = contains("EP", ignore.case = FALSE),
-               names_to = "var", values_to = "val") %>% View
-
-# select analyses to run
+# select analyses to run (allows to run only a subset)
 oview$Analysis_ID
-ids_to_compute <- c("5_FMF_UK_A1", "5_FMF_UK_A2")
+ids_to_compute <- c("5_FMF_UK_A6")
 
-# merge with relevant data sets
-oview %>% 
-  filter(Analysis_ID %in% ids_to_compute) %>% 
-  select(
-    Analysis_ID
-  )
+#################################################
+#### import and configure: specific analyses ####
+#################################################
+# import and append data tables as nested tibble
+df <- append_data_tables(oview, ids_to_compute)
 
-# merge with realized outcomes
+# build harmonized outcome vectors
+df$ep_data_clean <- map2(df$condition, df$ep_data,
+                         build_binary_endpoints)
 
+# build harmonized fsp measurement vectors
+df$fsp_data_clean <- map2(df$condition, df$fsp_data,
+                          build_measurements)
 
-# merge with prevalences
+# merge cleaned outcomes with cleaned measurements
+df$sampledata <- map2(df$ep_data_clean, df$fsp_data_clean,
+                      merge_endpoints_measurements)
 
 ######################################
 #### run performance computations ####
@@ -46,3 +42,7 @@ oview %>%
 ##############################
 #### run validation tests ####
 ##############################
+
+
+
+
