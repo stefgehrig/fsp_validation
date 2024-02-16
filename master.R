@@ -8,12 +8,15 @@
 library(tidyverse)
 library(pROC)
 
+# load functions
+source("functions.R")
+
 # import overview table
 oview <- import_overview()
 
 # select analyses to run (allows to run only a subset)
 oview$Analysis_ID
-ids_to_compute <- c("5_FMF_UK_A6")
+ids_to_compute <- c("5_FMF_UK_A4")
 
 #################################################
 #### import and configure: specific analyses ####
@@ -36,7 +39,6 @@ df$sampledata <- map2(df$ep_data_clean, df$fsp_data_clean,
 ######################################
 #### run performance computations ####
 ######################################
-
 
 
 ##############################

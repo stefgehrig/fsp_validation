@@ -136,6 +136,7 @@ build_binary_endpoints <- function(ep_condition, ep_data){
     #y <- as.numeric(...)
   } else{
     max_weeks <- parse_number(ep_condition)
+    stopifnot(nchar(max_weeks) == 2L)
     y <- as.numeric(ep_data$Pregnancy.outcome == "PE" & ep_data$out.ga < max_weeks)
   }
   
@@ -157,6 +158,7 @@ build_measurements <- function(ep_condition, fsp_data){
   } else{
     
     max_weeks <- parse_number(ep_condition)
+    stopifnot(nchar(max_weeks) == 2L)
     column_id <- which(grepl("post_PE", names(fsp_data)) & grepl(max_weeks, names(fsp_data)))
     stopifnot(length(column_id)==1)
     cat("\ncolumn used:", names(fsp_data)[column_id])
