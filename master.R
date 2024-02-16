@@ -1,5 +1,5 @@
 # stefan gehrig, 2024-02-12
-# last update of folder 'FSP_Exchange' from share point: 2024-12-02, 17:00
+# last update of folder 'FSP_Exchange' from share point: 2024-02-16, 16:45
 
 #######################################
 #### import and configure: general ####
@@ -14,7 +14,7 @@ source("functions.R")
 
 # import overview table
 oview <- import_overview()
-oview %>% View
+
 # select analyses to run (allows to run only a subset)
 oview$Analysis_ID
 ids_to_compute <- c("5_FMF_UK_A1")
@@ -62,7 +62,9 @@ df <- append_performances(df)
 ##############################
 #### run validation tests ####
 ##############################
-
-
-
-
+# run validation hypothesis tests per row of the data table
+df <- bind_cols(
+  df,
+  map_dfr(split(df, seq(nrow(df))),
+          run_validation_tests)
+)

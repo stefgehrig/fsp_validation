@@ -143,7 +143,8 @@ append_data_tables <- function(oview, ids_to_compute){
 # build harmonized outcome vectors
 build_binary_endpoints <- function(ep_condition, ep_data){
   if(!str_detect(ep_condition, "PE")){
-    #y <- as.numeric(...) # for trisomy
+    # y <- as.numeric(...) 
+    # TODO: for trisomy
   } else{
     max_weeks <- parse_number(ep_condition)
     stopifnot(nchar(max_weeks) == 2L)
@@ -163,7 +164,8 @@ build_binary_endpoints <- function(ep_condition, ep_data){
 # build harmonized measurement vectors
 build_measurements <- function(ep_condition, fsp_data){
   if(!str_detect(ep_condition, "PE")){
-    #pr <- as.numeric(...) # for trisomy
+    # pr <- as.numeric(...) 
+    # TODO: for trisomy
     
   } else{
     
@@ -209,7 +211,7 @@ find_cutoff_from_fpr_string_percent <- function(fpr_cutoff_string, sampledata){
     filter(fpr == max(fpr)) %>% 
     select(threshold, fpr)
   
-  stopifnot(nrow(n_ref_pos) == 1)
+  stopifnot(nrow(df_cutoff) == 1)
   
   return(df_cutoff$threshold)
   
@@ -289,3 +291,62 @@ append_performances <- function(data){
     )
   
 }
+
+# run validation hypothesis tests per row of the data table
+run_validation_tests <- function(data){
+  
+  # extract from data table: cell counts that were returned by diagn_perf()
+  tp <- data$tp
+  fp <- data$fp
+  tn <- data$tn
+  fn <- data$fn
+  
+  # extract from data table: validation conditions
+  validation <- data$validation
+  
+  if(grepl("DR >", validation) & grepl("\\%", validation) & !grepl(",", validation)) {
+    # a single validation condition, based on exceeding a DR in %
+    DR_0 <- parse_number(validation) / 100
+    
+    exacttest <- binom.test(x = tp, n = tp + fn, p = DR_0, alternative = "greater")
+    scoretest <- prop.test(x = tp, n = tp + fn, p = DR_0, alternative = "greater", 
+                           # no continuity correction, fully consistent with how 
+                           # wilson score intervals are computed in diagn_perf()
+                           correct = FALSE)
+    
+    pvals <- tibble(
+      pval_exacttest = exacttest$p.value,
+      pval_scoretest = scoretest$p.value
+    ) %>% 
+      mutate(across(contains("pval"),
+                    .fns = list(signif = ~.x < 0.025),
+                    .names = "{.col}_{.fn}"))
+    
+    # no tests required
+  } else if(validation == "-"){
+   
+    pvals <- tibble(
+      pval_exacttest = NA_real_,
+      pval_scoretest = NA_real_,
+      pval_exacttest_signif = NA,
+      pval_scoretest_signif = NA
+    ) 
+    
+  }
+  #   # a single validation condition, based on comparison to the prior risk
+  # else if(validation == "DR a.risk > DR prior") {
+  # 
+  #   DR
+  #   
+  #   
+  
+  # TODO: other possible conditions
+  # } else if(...) {
+  # 
+  # }
+
+  cat("\ncomputed exact p-value:",pvals$pval_exacttest)
+  return(pvals)
+}
+
+
