@@ -1,3 +1,6 @@
+# load also (adapted) BRAHMS' custom functions
+source("diagnostic-performance_2024-02-09_sg.R") 
+
 # import overview table
 import_overview <- function(){
   # import analysis overview table
@@ -23,8 +26,8 @@ import_overview <- function(){
     mutate(var = ifelse(str_detect(var, "_"), var, paste0(var, "_condition"))) %>%
     separate_wider_delim(var, "_", names = c("EP", "stat")) %>%
     pivot_wider(names_from = stat, values_from = val) %>% 
-    # harmonize prevalence missing indicator
-    mutate(prevalence = as.numeric(ifelse(prevalence == "-", NA, prevalence)))
+    # remove non-existing endpoints
+    filter(condition != "-")
   
   return(oview_long)
 }
@@ -34,9 +37,7 @@ append_data_tables <- function(oview, ids_to_compute){
   
   # merge with relevant data sets
   df <- oview %>% 
-    filter(Analysis_ID %in% ids_to_compute) %>% 
-    # remove non-existing endpoints
-    filter(EP != "-")
+    filter(Analysis_ID %in% ids_to_compute) 
   
   stopifnot(nrow(df)>0)
   
@@ -149,7 +150,7 @@ build_binary_endpoints <- function(ep_condition, ep_data){
     y <- as.numeric(ep_data$Pregnancy.outcome == "PE" & ep_data$out.ga < max_weeks)
   }
   
-  cat("\ncondition | outcome prevalences:\n", paste0(round(mean(y), 5),
+  cat("\noutcome prevalences | condition:\n", paste0(round(mean(y), 5),
                                         " (", sum(y), " / ", length(y), ") | ",
                                         ep_condition, "\n"))
   
@@ -208,6 +209,8 @@ find_cutoff_from_fpr_string_percent <- function(fpr_cutoff_string, sampledata){
     filter(fpr == max(fpr)) %>% 
     select(threshold, fpr)
   
+  stopifnot(nrow(n_ref_pos) == 1)
+  
   return(df_cutoff$threshold)
   
 }
@@ -257,4 +260,32 @@ compute_numeric_prevalences <- function(prevalence, sampledata){
   return(prevalence_numeric)
 }
 
+# compute the seven performance measures
+append_performances <- function(data){
+  
+  stopifnot(
+    # do not compute performances if there are already performanes in input data
+    all(names(data) != "DR") 
+  )
+  
+  performances <-
+    map2_dfr(data$sampledata, data$prevalence_numeric,
+             function(sampledata, prevalence_numeric) {
+               diagn_perf(
+                 sampledata,
+                 ref_outcome = "y",
+                 ref_pos = 1,
+                 test_outcome = "y_hat",
+                 test_pos = 1,
+                 prevalence = prevalence_numeric
+               )
+             })
 
+  cat(ncol(performances), "columns added to the data table")
+  
+  data %>% 
+    bind_cols(
+      performances
+    )
+  
+}

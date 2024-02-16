@@ -10,8 +10,7 @@ library(pROC)
 library(Hmisc)
 
 # load functions
-source("functions.R") # my custom functions
-source("FSP_Exchange/programs/diagnostic-performance_2024-02-09.R") # (adapted) BRAHMS' custom functions
+source("functions.R")
 
 # import overview table
 oview <- import_overview()
@@ -23,7 +22,7 @@ ids_to_compute <- c("5_FMF_UK_A1")
 #################################
 #### import and process data ####
 #################################
-# import and append data tables as nested tibble
+# import and append data tables as nested tibble, only keep selected analyses
 df <- append_data_tables(oview, ids_to_compute)
 
 # build harmonized outcome vectors
@@ -45,10 +44,20 @@ df$sampledata <- map2(df$ep_data_clean, df$fsp_data_clean,
 df$cutoff_numeric <- map2_dbl(df$cutoff, df$sampledata,
                               compute_numeric_cutoffs)
 
+# apply all thresholds and compute discrete predictions
+df$sampledata <- map2(df$sampledata, df$cutoff_numeric, 
+                      function(sampledata, cutoff_numeric) {
+                        sampledata <- sampledata %>% mutate(y_hat = pr > cutoff_numeric)
+                        cat("\n predicted outcome prevalence:", mean(sampledata$y_hat))
+                        return(sampledata)
+})
+
 # compute all prevalences on probability scale as numeric vector
 df$prevalence_numeric <- map2_dbl(df$prevalence, df$sampledata,
                                   compute_numeric_prevalences)
 
+# compute the seven performance measures
+df <- append_performances(df)
 
 ##############################
 #### run validation tests ####
