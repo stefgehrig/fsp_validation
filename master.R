@@ -7,20 +7,22 @@
 # libraries
 library(tidyverse)
 library(pROC)
+library(Hmisc)
 
 # load functions
-source("functions.R")
+source("functions.R") # my custom functions
+source("FSP_Exchange/programs/diagnostic-performance_2024-02-09.R") # (adapted) BRAHMS' custom functions
 
 # import overview table
 oview <- import_overview()
-
+oview %>% View
 # select analyses to run (allows to run only a subset)
 oview$Analysis_ID
-ids_to_compute <- c("5_FMF_UK_A4")
+ids_to_compute <- c("5_FMF_UK_A1")
 
-#################################################
-#### import and configure: specific analyses ####
-#################################################
+#################################
+#### import and process data ####
+#################################
 # import and append data tables as nested tibble
 df <- append_data_tables(oview, ids_to_compute)
 
@@ -39,6 +41,13 @@ df$sampledata <- map2(df$ep_data_clean, df$fsp_data_clean,
 ######################################
 #### run performance computations ####
 ######################################
+# compute all cutoffs on probability scale as numeric vector
+df$cutoff_numeric <- map2_dbl(df$cutoff, df$sampledata,
+                              compute_numeric_cutoffs)
+
+# compute all prevalences on probability scale as numeric vector
+df$prevalence_numeric <- map2_dbl(df$prevalence, df$sampledata,
+                                  compute_numeric_prevalences)
 
 
 ##############################

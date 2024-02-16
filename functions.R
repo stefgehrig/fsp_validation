@@ -4,10 +4,17 @@ import_overview <- function(){
   oview <- as_tibble(openxlsx::read.xlsx("FSP_Exchange/data/Overview_Stat_Analyses.xlsx", 
                                          sheet = "Statistics", 
                                          rows = 2:1e3,
-                                         detectDates = TRUE))
+                                         detectDates = TRUE)) %>% 
+    # column name cleaning
+    janitor::clean_names(case = "none") %>% 
+    rename_with(
+      .fn = function(x){paste0(str_sub(x, 16, 18), "_prevalence")},
+      .cols = contains("Prevalence")
+    )
   
   # reshape to have end points in long format
   oview_long <- oview %>%
+    mutate(across(contains("_prevalence"), as.character)) %>% 
     pivot_longer(
       cols = contains("EP", ignore.case = FALSE),
       names_to = "var",
@@ -15,7 +22,9 @@ import_overview <- function(){
     ) %>%
     mutate(var = ifelse(str_detect(var, "_"), var, paste0(var, "_condition"))) %>%
     separate_wider_delim(var, "_", names = c("EP", "stat")) %>%
-    pivot_wider(names_from = stat, values_from = val)
+    pivot_wider(names_from = stat, values_from = val) %>% 
+    # harmonize prevalence missing indicator
+    mutate(prevalence = as.numeric(ifelse(prevalence == "-", NA, prevalence)))
   
   return(oview_long)
 }
@@ -26,7 +35,7 @@ append_data_tables <- function(oview, ids_to_compute){
   # merge with relevant data sets
   df <- oview %>% 
     filter(Analysis_ID %in% ids_to_compute) %>% 
-    # remove empty endpoints
+    # remove non-existing endpoints
     filter(EP != "-")
   
   stopifnot(nrow(df)>0)
@@ -133,7 +142,7 @@ append_data_tables <- function(oview, ids_to_compute){
 # build harmonized outcome vectors
 build_binary_endpoints <- function(ep_condition, ep_data){
   if(!str_detect(ep_condition, "PE")){
-    #y <- as.numeric(...)
+    #y <- as.numeric(...) # for trisomy
   } else{
     max_weeks <- parse_number(ep_condition)
     stopifnot(nchar(max_weeks) == 2L)
@@ -153,7 +162,7 @@ build_binary_endpoints <- function(ep_condition, ep_data){
 # build harmonized measurement vectors
 build_measurements <- function(ep_condition, fsp_data){
   if(!str_detect(ep_condition, "PE")){
-    #pr <- as.numeric(...)
+    #pr <- as.numeric(...) # for trisomy
     
   } else{
     
@@ -187,3 +196,65 @@ merge_endpoints_measurements <- function(ep_data_clean, fsp_data_clean){
   return(temp)
   
 }
+
+# find cutoffs depending on not surpassing a given sample FPR in %
+find_cutoff_from_fpr_string_percent <- function(fpr_cutoff_string, sampledata){
+  
+  fpr_cutoff_numeric <- parse_number(fpr_cutoff_string)/100
+  
+  df_cutoff <- as_tibble(roc(sampledata, y, pr, ret = "coords", quiet = TRUE)) %>% 
+    mutate(fpr = 1-specificity) %>% 
+    filter(fpr < fpr_cutoff_numeric) %>% 
+    filter(fpr == max(fpr)) %>% 
+    select(threshold, fpr)
+  
+  return(df_cutoff$threshold)
+  
+}
+
+# compute all cutoffs on probability scale as numeric vector
+compute_numeric_cutoffs <- function(cutoff, sampledata){
+  
+  if(grepl("FPR", cutoff) & grepl("\\%", cutoff)) {
+    # cutoffs depending on not surpassing a given sample FPR in %:
+    cutoff_numeric <- find_cutoff_from_fpr_string_percent(cutoff, sampledata)
+
+    # cutoffs specified directly as ratio:
+  } else if(grepl(":", cutoff)) {
+    cutoff_numeric <- eval(parse(text = str_replace(cutoff, ":", "/")))
+    
+  } else {
+    # not supported cases: "MoM AFP >2.5", "-"
+    cutoff_numeric <- NA_real_
+  }
+  
+  stopifnot(cutoff_numeric >= 0 & cutoff_numeric <= 1)
+  cat("\ntransformed cutoff:", cutoff, "\u2192", cutoff_numeric)
+  return(cutoff_numeric)
+}
+
+# compute all prevalences on probability scale as numeric vector
+compute_numeric_prevalences <- function(prevalence, sampledata){
+  
+  # case should not exist; either given or NA for existing endpoints
+  stopifnot(prevalence != "-")
+  
+  if(as.numeric(prevalence)%%1==0) {
+    # prevalence is given as reciprocal in form of an integer:
+    prevalence_numeric <- 1/as.numeric(prevalence)
+    
+    # prevalence from sample data is used:
+  } else if(is.na(prevalence)) {
+    prevalence_numeric <- mean(sampledata$y)
+    
+  } else {
+    # not supported cases
+    prevalence_numeric <- NA_real_
+  }
+  
+  stopifnot(prevalence_numeric >= 0 & prevalence_numeric <= 1)
+  cat("\ntransformed prevalence:", prevalence, "\u2192", prevalence_numeric)
+  return(prevalence_numeric)
+}
+
+
