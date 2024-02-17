@@ -1,10 +1,7 @@
-# load also (adapted) BRAHMS' custom functions
-source("diagnostic-performance_2024-02-09_sg.R") 
-
 # import overview table
 import_overview <- function(){
   # import analysis overview table
-  oview <- as_tibble(openxlsx::read.xlsx("../FSP_Exchange/data/Overview_Stat_Analyses.xlsx", 
+  oview <- as_tibble(openxlsx::read.xlsx("FSP_Exchange/data/Overview_Stat_Analyses.xlsx", 
                                          sheet = "Statistics", 
                                          rows = 2:1e3,
                                          detectDates = TRUE)) %>% 
@@ -61,13 +58,13 @@ append_data_tables <- function(oview, ids_to_compute){
   df <- df %>%
     mutate(
       Data_Filename = case_when(
-        type == "PE" ~ paste0("../FSP_Exchange/data/PE/", Data_Filename),
+        type == "PE" ~ paste0("FSP_Exchange/data/PE/", Data_Filename),
         type == "Trisomie" ~ paste0("---", Data_Filename),
         TRUE ~ NA_character_
       ),
       Outcomes_Filename =
         case_when(
-          type == "PE" ~ "../FSP_Exchange/data/PE/Merge_ID_outcome_PE.xlsx",
+          type == "PE" ~ "FSP_Exchange/data/PE/Merge_ID_outcome_PE.xlsx",
           type == "Trisomie" ~ "---",
           TRUE ~ NA_character_
         ),

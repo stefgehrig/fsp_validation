@@ -108,7 +108,9 @@
 # FMF_UK_A37_MC
 # FMF_UK_A37_DC
 
-# choose analysis ids to compute
+# select analyses to run (allows to run only a subset)
+# (if an analysis is dependent on another analysis, i.e., when comparing posterior
+# with prior risk performance, all dependent analyses must be selected jointly)
 ids_to_compute <- c("6_FMF_UK_A1a", "6_FMF_UK_MFs")
 
 # update results time identifier

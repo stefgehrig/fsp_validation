@@ -9,15 +9,11 @@ library(pROC)
 library(Hmisc)
 
 # load functions
-source("functions.R")
+source("R/functions.R")
+source("R/diagnostic-performance_2024-02-09_sg.R") 
 
 # import overview table
 oview <- import_overview()
-
-# select analyses to run (allows to run only a subset)
-# (if an analysis is dependent on another analysis, i.e., when comparing posterior
-# with prior risk performance, all dependent analyses must be selected jointly)
-# ids_to_compute <- c("6_FMF_UK_A1a", "6_FMF_UK_MFs")
 
 #################################
 #### import and process data ####
@@ -68,8 +64,8 @@ df <- append_test_results(df)
 ########################
 #### export results ####
 ########################
-filename_rds  <- paste0("../results/results_", output_time, ".rds")
-filename_xlsx <- paste0("../results/results_", output_time, ".xlsx")
+filename_rds  <- paste0("results/results_", output_time, ".rds")
+filename_xlsx <- paste0("results/results_", output_time, ".xlsx")
 
 saveRDS(df, file = filename_rds) # including list columns with case-wise data
 openxlsx::write.xlsx(df %>% select(!where(is.list)), file = filename_xlsx) # excluding list columns with case-wise data

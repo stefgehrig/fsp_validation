@@ -6,6 +6,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = TRUE, message = TRUE)
+knitr::opts_knit$set(root.dir = "..") # work from project directory
 ```
 
 <style type="text/css">
@@ -16,12 +17,12 @@ pre{font-size: 10px}
 
 ### Print specified analyses
 
-```{r}
-print(ids_to_compute)
+```{r, echo = FALSE}
+knitr::kable(data.frame(ids_to_compute))
 ```
 
 ### Print log for script run
 
 ```{r}
-source("master.R", echo=TRUE, max.deparse.length=1e3)
+source("R/master.R", echo=TRUE, max.deparse.length=1e3)
 ```
