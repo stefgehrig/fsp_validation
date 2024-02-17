@@ -1,0 +1,27 @@
+---
+title: "Log for run of `master.R` for performance validation analysis for FastScreen PLUS"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = TRUE, message = TRUE)
+```
+
+<style type="text/css">
+body, td {font-size: 12px;}
+code.r{font-size: 10px;}
+pre{font-size: 10px}
+</style>
+
+### Print specified analyses
+
+```{r}
+print(ids_to_compute)
+```
+
+### Print log for script run
+
+```{r}
+source("master.R", echo=TRUE, max.deparse.length=1e3)
+```

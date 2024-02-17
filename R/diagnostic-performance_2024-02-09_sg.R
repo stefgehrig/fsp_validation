@@ -171,19 +171,11 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
   res$mis_ref_or_test[1] = n_total - n_ref_and_test
   
   # create a MODIFIED contintency table, which only changes the prevalence to accord to pre-specified one
-  # (the table is allowed to have non-integer counts; all upcoming statistical functions can deal with this)
-  ct_modified <- ct
-  ct_modified["Sum", "negative"]     <- ct["Sum","Sum"] * (1-prevalence)
-  ct_modified["Sum", "positive"]     <- ct["Sum","Sum"] * (prevalence)
-  ct_modified["negative","negative"] <- ct["Sum","Sum"] * (1-prevalence) * (ct["negative", "negative"] / ct["Sum", "negative"])
-  ct_modified["positive","negative"] <- ct["Sum","Sum"] * (1-prevalence) * (ct["positive", "negative"] / ct["Sum", "negative"])
-  ct_modified["negative","positive"] <- ct["Sum","Sum"] * (prevalence) * (ct["negative", "positive"] / ct["Sum", "positive"])
-  ct_modified["positive","positive"] <- ct["Sum","Sum"] * (prevalence) * (ct["positive", "positive"] / ct["Sum", "positive"])
-  tp_modified <- ct_modified["positive","positive"]
-  fp_modified <- ct_modified["positive","negative"]
-  fn_modified <- ct_modified["negative","positive"]
-  tn_modified <- ct_modified["negative","negative"]
-  
+  # (the entries are allowed to be non-integer counts; all upcoming statistical functions can deal with this)
+  tn_modified <- (tp+fp+fn+tn) * (1-prevalence) * (tn / (tn+fp))
+  fp_modified <- (tp+fp+fn+tn) * (1-prevalence) * (fp / (tn+fp))
+  fn_modified <- (tp+fp+fn+tn) * (prevalence)   * (fn / (fn+tp))
+  tp_modified <- (tp+fp+fn+tn) * (prevalence)   * (tp / (fn+tp))
 
   #---------------------------------------------------------------------------------------------.
   # performance measures: DR, Specificity, FPR, PPV, NPV ####

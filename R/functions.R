@@ -4,7 +4,7 @@ source("diagnostic-performance_2024-02-09_sg.R")
 # import overview table
 import_overview <- function(){
   # import analysis overview table
-  oview <- as_tibble(openxlsx::read.xlsx("FSP_Exchange/data/Overview_Stat_Analyses.xlsx", 
+  oview <- as_tibble(openxlsx::read.xlsx("../FSP_Exchange/data/Overview_Stat_Analyses.xlsx", 
                                          sheet = "Statistics", 
                                          rows = 2:1e3,
                                          detectDates = TRUE)) %>% 
@@ -61,13 +61,13 @@ append_data_tables <- function(oview, ids_to_compute){
   df <- df %>%
     mutate(
       Data_Filename = case_when(
-        type == "PE" ~ paste0("FSP_Exchange/data/PE/", Data_Filename),
+        type == "PE" ~ paste0("../FSP_Exchange/data/PE/", Data_Filename),
         type == "Trisomie" ~ paste0("---", Data_Filename),
         TRUE ~ NA_character_
       ),
       Outcomes_Filename =
         case_when(
-          type == "PE" ~ "FSP_Exchange/data/PE/Merge_ID_outcome_PE.xlsx",
+          type == "PE" ~ "../FSP_Exchange/data/PE/Merge_ID_outcome_PE.xlsx",
           type == "Trisomie" ~ "---",
           TRUE ~ NA_character_
         ),
@@ -125,7 +125,6 @@ append_data_tables <- function(oview, ids_to_compute){
     })
   )
   
-  
   # check that there is same number of outcomes and measurements
   cat("\nsample size fsp:\n", paste0(  map_dbl(df$fsp_data, nrow),"\n"))
   cat("\nsample size outc:\n", paste0(  map_dbl(df$ep_data, nrow),"\n"))
@@ -133,7 +132,7 @@ append_data_tables <- function(oview, ids_to_compute){
   
   # add a sample size column
   df <- df %>% mutate(
-    sample_size = map_dbl(df$fsp_data, nrow)
+    total_sample_size = map_dbl(df$fsp_data, nrow)
   )
   
   return(df)
@@ -173,16 +172,14 @@ build_measurements <- function(ep_condition, fsp_data){
     stopifnot(nchar(max_weeks) == 2L)
     column_id <- which(grepl("post_PE", names(fsp_data)) & grepl(max_weeks, names(fsp_data)))
     stopifnot(length(column_id)==1)
-    cat("\ncolumn used:", names(fsp_data)[column_id])
     
     
     pr <- fsp_data %>% pull(!!as.symbol(names(fsp_data)[column_id]))
   }
   
-  cat("\nmissings:", paste0(sum(is.na(pr))))
-  cat("\nmean:", paste0(round(mean(pr, na.rm = TRUE), 5), "\n"))
+  cat("\ncolumns used | missings | mean:\n")
+  cat(names(fsp_data)[column_id], "|", paste0(sum(is.na(pr))), "|",paste0(round(mean(pr, na.rm = TRUE), 5)), "\n")
 
-  
   tibble(
     sample_id = fsp_data$sample_id,
     pr = pr 
@@ -195,7 +192,7 @@ merge_endpoints_measurements <- function(ep_data_clean, fsp_data_clean){
     ep_data_clean %>% 
       left_join(fsp_data_clean, by = join_by("patient_id" == "sample_id"))
   )
-  cat("\nrows of merged table:", paste0(nrow(temp)))
+  cat("\nrows of merged table:", paste0(nrow(temp)),"\n")
   return(temp)
   
 }
@@ -234,11 +231,11 @@ compute_numeric_cutoffs <- function(cutoff, sampledata){
   }
   
   stopifnot(cutoff_numeric >= 0 & cutoff_numeric <= 1)
-  cat("\ntransformed cutoff:", cutoff, "\u2192", cutoff_numeric)
+  cat("\ntransformed cutoff:", cutoff, "\u2192", cutoff_numeric, "\n")
   return(cutoff_numeric)
 }
 
-# compute all prevalences on probability scale as numeric vector
+# compute all desired prevalences on probability scale as numeric vector
 compute_numeric_prevalences <- function(prevalence, sampledata){
   
   # case should not exist; either given or NA for existing endpoints
@@ -258,7 +255,7 @@ compute_numeric_prevalences <- function(prevalence, sampledata){
   }
   
   stopifnot(prevalence_numeric >= 0 & prevalence_numeric <= 1)
-  cat("\ntransformed prevalence:", prevalence, "\u2192", prevalence_numeric)
+  cat("\ntransformed prevalence:", prevalence, "\u2192", prevalence_numeric, "\n")
   return(prevalence_numeric)
 }
 
@@ -283,7 +280,7 @@ append_performances <- function(data){
                )
              })
 
-  cat(ncol(performances), "columns added to the data table")
+  cat("\n", ncol(performances), "columns added to the data table\n")
   
   data %>% 
     bind_cols(
@@ -293,7 +290,7 @@ append_performances <- function(data){
 }
 
 # run validation hypothesis tests per row of the data table
-run_validation_tests <- function(data){
+run_validation_tests <- function(data, data_prior = NULL){
   
   # extract from data table: cell counts that were returned by diagn_perf()
   tp <- data$tp
@@ -304,15 +301,44 @@ run_validation_tests <- function(data){
   # extract from data table: validation conditions
   validation <- data$validation
   
+  # extract from data table: case-level data for prior and posterior risks
+  if(!is.null(data_prior)){
+    sampledata_postr <- data$sampledata[[1]]
+    sampledata_prior <- data_prior$sampledata[[1]]
+    
+    # rename column names for prior risk data table
+    names(sampledata_prior)[!grepl("patient_id", names(sampledata_prior))] <- paste0(names(sampledata_prior)[!grepl("_id", names(sampledata_prior))], "_prior")
+    
+    sampledata_compare <- left_join(sampledata_postr, sampledata_prior, by = "patient_id") 
+    stopifnot(nrow(sampledata_compare) == nrow(sampledata_postr))
+    sampledata_compare <- sampledata_compare %>% drop_na() # can only use cases which have all data for prior and posterior
+    
+    stopifnot(all(sampledata_compare$y == sampledata_compare$y_prior))
+    
+    if(nrow(sampledata_prior) != nrow(sampledata_postr)){
+      cat("\nData sets for prior and adjusted risks do not have same length!",
+          "\nOnly cases which occur without missings in both data sets are used for validation test (", nrow(sampledata_compare), ")\n")
+    }
+    
+  }
+  
   if(grepl("DR >", validation) & grepl("\\%", validation) & !grepl(",", validation)) {
     # a single validation condition, based on exceeding a DR in %
     DR_0 <- parse_number(validation) / 100
     
     exacttest <- binom.test(x = tp, n = tp + fn, p = DR_0, alternative = "greater")
-    scoretest <- prop.test(x = tp, n = tp + fn, p = DR_0, alternative = "greater", 
-                           # no continuity correction, fully consistent with how 
-                           # wilson score intervals are computed in diagn_perf()
-                           correct = FALSE)
+    
+    suppressWarnings(# no need for chi-squared approximation warnings
+      scoretest <-
+        prop.test(
+          x = tp,
+          n = tp + fn,
+          p = DR_0,
+          alternative = "greater",
+          # no continuity correction, fully consistent with how
+          # wilson score intervals are computed in diagn_perf()
+          correct = FALSE
+        ))
     
     pvals <- tibble(
       pval_exacttest = exacttest$p.value,
@@ -330,23 +356,94 @@ run_validation_tests <- function(data){
       pval_scoretest = NA_real_,
       pval_exacttest_signif = NA,
       pval_scoretest_signif = NA
-    ) 
+    )
     
+    # a single validation condition, based on comparison to the prior risk
+  } else if(validation == "DR a.risk > DR prior") {
+    
+    # implement an exact and score test version of mcnemar's test
+    
+    testdata <- sampledata_compare %>% 
+      summarise(
+        disagree_postr = sum(y_hat == 1 & y_hat_prior == 0 & y == 1),
+        disagree_total = sum(y_hat != y_hat_prior & y == 1)
+      )
+    
+    
+    exacttest <- binom.test(x = testdata$disagree_postr,
+                            n = testdata$disagree_total, 
+                            p = 1/2,
+                            alternative = "greater")
+    
+    suppressWarnings(
+      # no need for chi-squared approximation warnings
+      scoretest <- prop.test(
+        x = testdata$disagree_postr,
+        n = testdata$disagree_total,
+        p = 1 / 2,
+        alternative = "greater",
+        # no continuity correction, fully consistent with how
+        # wilson score intervals are computed in diagn_perf()
+        correct = FALSE
+      )
+    )
+    
+    # check that my mcnemar test is working properly by comparing to built-in two-sided function
+    stopifnot(
+      round(mcnemar.test(sampledata_compare %>% 
+                     filter(y == 1) %>% 
+                     {table(.$y_hat, .$y_hat_prior)},
+                   correct = FALSE)$p.value / 2, 12) == round(scoretest$p.value, 12)
+    )
+    
+    pvals <- tibble(
+      pval_exacttest = exacttest$p.value,
+      pval_scoretest = scoretest$p.value
+    ) %>% 
+      mutate(across(contains("pval"),
+                    .fns = list(signif = ~.x < 0.025),
+                    .names = "{.col}_{.fn}"))
   }
-  #   # a single validation condition, based on comparison to the prior risk
-  # else if(validation == "DR a.risk > DR prior") {
-  # 
-  #   DR
-  #   
-  #   
-  
+    
   # TODO: other possible conditions
   # } else if(...) {
   # 
   # }
 
-  cat("\ncomputed exact p-value:",pvals$pval_exacttest)
+  cat("\ncomputed exact p-value:", round(pvals$pval_exacttest, 5), "( validation alternative hypothesis:", validation, ")\n")
   return(pvals)
 }
 
 
+# run validation hypothesis tests
+append_test_results <- function(data){
+  
+  # find analysis that require prior risks
+  requires_prior <- which(data$validation == "DR a.risk > DR prior")
+  
+  # compute tests
+  testresults <- map_dfr(1:nrow(data), function(i){
+    # select current row for which to run analysis
+    datarow <- data[i,]
+    # run analyses that do not need prior risks
+    if(!i %in% requires_prior){
+      run_validation_tests(data = datarow)
+      # run analyses that need prior risks
+    } else if(i %in% requires_prior){
+      
+      analysis_id_prior <- data$Analysis_ID[data$Agorithm_ID == data$Agorithm_ID[i] & grepl("MFs", data$Analysis_ID)]
+      datarow_prior <- data[data$Analysis_ID == analysis_id_prior,]
+      run_validation_tests(data = datarow, data_prior = datarow_prior)
+      
+    } 
+  })
+  
+  cat("\n")
+  cat(ncol(testresults), "columns added to the data table\n")
+  
+  bind_cols(
+    df,
+    testresults
+  )
+  
+}

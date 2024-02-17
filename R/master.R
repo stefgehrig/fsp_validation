@@ -16,8 +16,9 @@ source("functions.R")
 oview <- import_overview()
 
 # select analyses to run (allows to run only a subset)
-oview$Analysis_ID
-ids_to_compute <- c("5_FMF_UK_A1")
+# (if an analysis is dependent on another analysis, i.e., when comparing posterior
+# with prior risk performance, all dependent analyses must be selected jointly)
+# ids_to_compute <- c("6_FMF_UK_A1a", "6_FMF_UK_MFs")
 
 #################################
 #### import and process data ####
@@ -48,11 +49,11 @@ df$cutoff_numeric <- map2_dbl(df$cutoff, df$sampledata,
 df$sampledata <- map2(df$sampledata, df$cutoff_numeric, 
                       function(sampledata, cutoff_numeric) {
                         sampledata <- sampledata %>% mutate(y_hat = pr > cutoff_numeric)
-                        cat("\n predicted outcome prevalence:", mean(sampledata$y_hat))
+                        cat("\npredicted outcome prevalence:", mean(sampledata$y_hat, na.rm = TRUE), "\n")
                         return(sampledata)
 })
 
-# compute all prevalences on probability scale as numeric vector
+# compute all desired prevalences on probability scale as numeric vector
 df$prevalence_numeric <- map2_dbl(df$prevalence, df$sampledata,
                                   compute_numeric_prevalences)
 
@@ -62,9 +63,14 @@ df <- append_performances(df)
 ##############################
 #### run validation tests ####
 ##############################
-# run validation hypothesis tests per row of the data table
-df <- bind_cols(
-  df,
-  map_dfr(split(df, seq(nrow(df))),
-          run_validation_tests)
-)
+# run validation hypothesis tests
+df <- append_test_results(df)
+
+########################
+#### export results ####
+########################
+filename_rds  <- paste0("../results/results_", output_time, ".rds")
+filename_xlsx <- paste0("../results/results_", output_time, ".xlsx")
+
+saveRDS(df, file = filename_rds) # including list columns with case-wise data
+openxlsx::write.xlsx(df %>% select(!where(is.list)), file = filename_xlsx) # excluding list columns with case-wise data
