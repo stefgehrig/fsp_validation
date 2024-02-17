@@ -1,5 +1,4 @@
 # stefan gehrig, 2024-02-12
-# last update of folder 'FSP_Exchange' from share point: 2024-02-16, 16:45
 
 #######################################
 #### import and configure: general ####

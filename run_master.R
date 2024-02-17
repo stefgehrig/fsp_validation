@@ -1,3 +1,6 @@
+# stefan gehrig, 2024-02-17
+# script to run a logged version of the R/master.R script
+
 # possible analysis ids:
 # FMF_UK_A1
 # FMF_UK_A2
