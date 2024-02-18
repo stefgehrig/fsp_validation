@@ -15,6 +15,11 @@ source("R/diagnostic-performance_2024-02-09_sg.R")
 # import overview table
 oview <- import_overview()
 
+# select analyses to run (allows to run only a subset)
+# (if an analysis is dependent on another analysis, i.e., when comparing posterior
+# with prior risk performance, all dependent analyses must be selected jointly)
+# ids_to_compute <- c("6_FMF_UK_A1a", "6_FMF_UK_MFs")
+
 #################################
 #### import and process data ####
 #################################
@@ -44,7 +49,8 @@ df$cutoff_numeric <- map2_dbl(df$cutoff, df$sampledata,
 df$sampledata <- map2(df$sampledata, df$cutoff_numeric, 
                       function(sampledata, cutoff_numeric) {
                         sampledata <- sampledata %>% mutate(y_hat = pr > cutoff_numeric)
-                        cat("\npredicted outcome prevalence:", mean(sampledata$y_hat, na.rm = TRUE), "\n")
+                        cat("\npredicted outcome prevalence:", 
+                            format(round(mean(sampledata$y_hat, na.rm = TRUE), 5), nsmall = 5), "")
                         return(sampledata)
 })
 

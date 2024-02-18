@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2024-02-17" />
+<meta name="date" content="2024-02-18" />
 
 <title>Log for run of master.R for performance validation analysis for FastScreen PLUS</title>
 
@@ -351,7 +351,7 @@ display: none;
 
 <h1 class="title toc-ignore">Log for run of <code>master.R</code> for
 performance validation analysis for FastScreen PLUS</h1>
-<h4 class="date">17 February 2024</h4>
+<h4 class="date">18 February 2024</h4>
 
 </div>
 
@@ -363,15 +363,27 @@ pre{font-size: 10px}
 </style>
 <div id="print-specified-analyses" class="section level3">
 <h3>Print specified analyses</h3>
-<pre class="r"><code>print(ids_to_compute)</code></pre>
-<pre><code>## [1] &quot;6_FMF_UK_A1a&quot; &quot;6_FMF_UK_MFs&quot;</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">ids_to_compute</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">6_FMF_UK_A1a</td>
+</tr>
+<tr class="even">
+<td align="left">6_FMF_UK_MFs</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="print-log-for-script-run" class="section level3">
 <h3>Print log for script run</h3>
-<pre class="r"><code>source(&quot;master.R&quot;, echo=TRUE, max.deparse.length=1e3)</code></pre>
+<pre class="r"><code>source(&quot;R/master.R&quot;, echo=TRUE, max.deparse.length=1e3)</code></pre>
 <pre><code>## 
 ## &gt; # stefan gehrig, 2024-02-12
-## &gt; # last update of folder &#39;FSP_Exchange&#39; from share point: 2024-02-16, 16:45
 ## &gt; 
 ## &gt; #######################################
 ## &gt; #### import and configure: general ####
@@ -384,7 +396,9 @@ pre{font-size: 10px}
 ## &gt; library(Hmisc)
 ## 
 ## &gt; # load functions
-## &gt; source(&quot;functions.R&quot;)
+## &gt; source(&quot;R/functions.R&quot;)
+## 
+## &gt; source(&quot;R/diagnostic-performance_2024-02-09_sg.R&quot;) 
 ## 
 ## &gt; # import overview table
 ## &gt; oview &lt;- import_overview()
@@ -413,10 +427,10 @@ pre{font-size: 10px}
 ##  PE | PE&lt;37 WE
 ## 
 ## data files | outcome files | outcome sheets:
-##  ../FSP_Exchange/data/PE/cv__ds_muplgfsflt_w22.xlsx | ../FSP_Exchange/data/PE/Merge_ID_outcome_PE.xlsx | PE 2T
-##  ../FSP_Exchange/data/PE/cv__ds_muplgfsflt_w22.xlsx | ../FSP_Exchange/data/PE/Merge_ID_outcome_PE.xlsx | PE 2T
-##  ../FSP_Exchange/data/PE/cv__ds_nomarker_w22.xlsx | ../FSP_Exchange/data/PE/Merge_ID_outcome_PE.xlsx | PE 2T
-##  ../FSP_Exchange/data/PE/cv__ds_nomarker_w22.xlsx | ../FSP_Exchange/data/PE/Merge_ID_outcome_PE.xlsx | PE 2T
+##  FSP_Exchange/data/PE/cv__ds_muplgfsflt_w22.xlsx | FSP_Exchange/data/PE/Merge_ID_outcome_PE.xlsx | PE 2T
+##  FSP_Exchange/data/PE/cv__ds_muplgfsflt_w22.xlsx | FSP_Exchange/data/PE/Merge_ID_outcome_PE.xlsx | PE 2T
+##  FSP_Exchange/data/PE/cv__ds_nomarker_w22.xlsx | FSP_Exchange/data/PE/Merge_ID_outcome_PE.xlsx | PE 2T
+##  FSP_Exchange/data/PE/cv__ds_nomarker_w22.xlsx | FSP_Exchange/data/PE/Merge_ID_outcome_PE.xlsx | PE 2T
 ## 
 ## sample size fsp:
 ##  1000
@@ -433,45 +447,25 @@ pre{font-size: 10px}
 ## &gt; # build harmonized outcome vectors
 ## &gt; df$ep_data_clean &lt;- map2(df$condition, df$ep_data,
 ## +                          build_binary_endpoints)
-## 
-## outcome prevalences | condition:
-##  0.007 (7 / 1000) | PE&lt;32 WE
-## 
-## outcome prevalences | condition:
-##  0.024 (24 / 1000) | PE&lt;37 WE
-## 
-## outcome prevalences | condition:
-##  0.00701 (7 / 999) | PE&lt;32 WE
-## 
-## outcome prevalences | condition:
-##  0.02302 (23 / 999) | PE&lt;37 WE
+## observed prop | condition: 0.00700 (   7 /  1000) | PE&lt;32 WE
+## observed prop | condition: 0.02400 (  24 /  1000) | PE&lt;37 WE
+## observed prop | condition: 0.00701 (   7 /   999) | PE&lt;32 WE
+## observed prop | condition: 0.02302 (  23 /   999) | PE&lt;37 WE
 ## 
 ## &gt; # build harmonized fsp measurement vectors
 ## &gt; df$fsp_data_clean &lt;- map2(df$condition, df$fsp_data,
 ## +                           build_measurements)
-## 
-## columns used | missings | mean:
-## post_PE_W32 | 1 | 0.00674 
-## 
-## columns used | missings | mean:
-## post_PE_W37 | 1 | 0.01789 
-## 
-## columns used | missings | mean:
-## post_PE_W32 | 1 | 0.00168 
-## 
-## columns used | missings | mean:
-## post_PE_W37 | 1 | 0.00882 
+## column | missings | mean: post_PE_W32 | 1 | 0.00674 
+## column | missings | mean: post_PE_W37 | 1 | 0.01789 
+## column | missings | mean: post_PE_W32 | 1 | 0.00168 
+## column | missings | mean: post_PE_W37 | 1 | 0.00882 
 ## 
 ## &gt; # merge cleaned outcomes with cleaned measurements
 ## &gt; df$sampledata &lt;- map2(df$ep_data_clean, df$fsp_data_clean,
 ## +                       merge_endpoints_measurements)
-## 
 ## rows of merged table: 1000 
-## 
 ## rows of merged table: 1000 
-## 
 ## rows of merged table: 999 
-## 
 ## rows of merged table: 999 
 ## 
 ## &gt; ######################################
@@ -480,73 +474,56 @@ pre{font-size: 10px}
 ## &gt; # compute all cutoffs on probability scale as numeric vector
 ## &gt; df$cutoff_numeric &lt;- map2_dbl(df$cutoff, df$sampledata,
 ## +                               compute_numeric_cutoffs)
-## 
-## transformed cutoff: FPR 1% → 0.02845214 
-## 
-## transformed cutoff: FPR 10% → 0.01073781 
-## 
-## transformed cutoff: FPR 1% → 0.01380865 
-## 
-## transformed cutoff: FPR 10% → 0.01421085 
+## transformed cutoff: FPR 1%   → 0.02845 
+## transformed cutoff: FPR 10%  → 0.01074 
+## transformed cutoff: FPR 1%   → 0.01381 
+## transformed cutoff: FPR 10%  → 0.01421 
 ## 
 ## &gt; # apply all thresholds and compute discrete predictions
 ## &gt; df$sampledata &lt;- map2(df$sampledata, df$cutoff_numeric, 
 ## +                       function(sampledata, cutoff_numeric) {
 ## +                         sampledata &lt;- sampledata %&gt;% mutate(y_hat = pr &gt; cutoff_numeric)
-## +                         cat(&quot;\npredicted outcome prevalence:&quot;, mean(sampledata$y_hat, na.rm = TRUE), &quot;\n&quot;)
+## +                         cat(&quot;\npredicted outcome prevalence:&quot;, 
+## +                             format(round(mean(sampledata$y_hat, na.rm = TRUE), 5), nsmall = 5), &quot;&quot;)
 ## +                         return(sampledata)
 ## + })
 ## 
-## predicted outcome prevalence: 0.01501502 
-## 
-## predicted outcome prevalence: 0.1131131 
-## 
-## predicted outcome prevalence: 0.01002004 
-## 
-## predicted outcome prevalence: 0.1072144 
-## 
+## predicted outcome prevalence: 0.01502 
+## predicted outcome prevalence: 0.11311 
+## predicted outcome prevalence: 0.01002 
+## predicted outcome prevalence: 0.10721 
 ## &gt; # compute all desired prevalences on probability scale as numeric vector
 ## &gt; df$prevalence_numeric &lt;- map2_dbl(df$prevalence, df$sampledata,
 ## +                                   compute_numeric_prevalences)
-## 
-## transformed prevalence: 882 → 0.001133787 
-## 
-## transformed prevalence: 151 → 0.006622517 
-## 
-## transformed prevalence: 882 → 0.001133787 
-## 
-## transformed prevalence: 151 → 0.006622517 
+## transformed prevalence: 882   → 0.00113 
+## transformed prevalence: 151   → 0.00662 
+## transformed prevalence: 882   → 0.00113 
+## transformed prevalence: 151   → 0.00662 
 ## 
 ## &gt; # compute the seven performance measures
 ## &gt; df &lt;- append_performances(df)
-## 
-##  43 columns added to the data table
+## 43 columns added to the data table
 ## 
 ## &gt; ##############################
 ## &gt; #### run validation tests ####
 ## &gt; ##############################
 ## &gt; # run validation hypothesis tests
 ## &gt; df &lt;- append_test_results(df)
-## 
-## Data sets for prior and adjusted risks do not have same length! 
+## Data sets for prior and adjusted risks do not have same length in analysis 6_FMF_UK_A1a ! 
 ## Only cases which occur without missings in both data sets are used for validation test ( 998 )
 ## 
-## computed exact p-value: 0.03125 ( validation alternative hypothesis: DR a.risk &gt; DR prior )
-## 
-## computed exact p-value: 0.07579 ( validation alternative hypothesis: DR &gt; 50% )
-## 
-## computed exact p-value: NA ( validation alternative hypothesis: - )
-## 
-## computed exact p-value: NA ( validation alternative hypothesis: - )
-## 
+## computed exact p-value: 0.03125     ( validation alternative hypothesis: DR a.risk &gt; DR prior )
+## computed exact p-value: 0.07579     ( validation alternative hypothesis: DR &gt; 50% )
+## computed exact p-value: NA          ( validation alternative hypothesis: - )
+## computed exact p-value: NA          ( validation alternative hypothesis: - )
 ## 4 columns added to the data table
 ## 
 ## &gt; ########################
 ## &gt; #### export results ####
 ## &gt; ########################
-## &gt; filename_rds  &lt;- paste0(&quot;../results/results_&quot;, output_time, &quot;.rds&quot;)
+## &gt; filename_rds  &lt;- paste0(&quot;results/results_&quot;, output_time, &quot;.rds&quot;)
 ## 
-## &gt; filename_xlsx &lt;- paste0(&quot;../results/results_&quot;, output_time, &quot;.xlsx&quot;)
+## &gt; filename_xlsx &lt;- paste0(&quot;results/results_&quot;, output_time, &quot;.xlsx&quot;)
 ## 
 ## &gt; saveRDS(df, file = filename_rds) # including list columns with case-wise data
 ## 

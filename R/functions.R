@@ -147,8 +147,9 @@ build_binary_endpoints <- function(ep_condition, ep_data){
     y <- as.numeric(ep_data$Pregnancy.outcome == "PE" & ep_data$out.ga < max_weeks)
   }
   
-  cat("\noutcome prevalences | condition:\n", paste0(round(mean(y), 5),
-                                        " (", sum(y), " / ", length(y), ") | ",
+  cat("observed prop | condition:", paste0(format(round(mean(y), 5), nsmall = 5),
+                                        " (", format(sum(y), width = 4), " / ", 
+                                        format(length(y), width = 5), ") | ",
                                         ep_condition, "\n"))
   
   tibble(
@@ -174,8 +175,9 @@ build_measurements <- function(ep_condition, fsp_data){
     pr <- fsp_data %>% pull(!!as.symbol(names(fsp_data)[column_id]))
   }
   
-  cat("\ncolumns used | missings | mean:\n")
-  cat(names(fsp_data)[column_id], "|", paste0(sum(is.na(pr))), "|",paste0(round(mean(pr, na.rm = TRUE), 5)), "\n")
+  cat("column | missings | mean: ")
+  cat(names(fsp_data)[column_id], "|", paste0(sum(is.na(pr))), "|",
+      paste0(format(round(mean(pr, na.rm = TRUE), 5), nsmall = 5)), "\n")
 
   tibble(
     sample_id = fsp_data$sample_id,
@@ -189,7 +191,7 @@ merge_endpoints_measurements <- function(ep_data_clean, fsp_data_clean){
     ep_data_clean %>% 
       left_join(fsp_data_clean, by = join_by("patient_id" == "sample_id"))
   )
-  cat("\nrows of merged table:", paste0(nrow(temp)),"\n")
+  cat("rows of merged table:", paste0(nrow(temp)), "\n")
   return(temp)
   
 }
@@ -228,7 +230,8 @@ compute_numeric_cutoffs <- function(cutoff, sampledata){
   }
   
   stopifnot(cutoff_numeric >= 0 & cutoff_numeric <= 1)
-  cat("\ntransformed cutoff:", cutoff, "\u2192", cutoff_numeric, "\n")
+  cat("transformed cutoff:", format(cutoff, width = 8), "\u2192", 
+      format(round(cutoff_numeric, 5), nsmall = 5), "\n")
   return(cutoff_numeric)
 }
 
@@ -252,7 +255,9 @@ compute_numeric_prevalences <- function(prevalence, sampledata){
   }
   
   stopifnot(prevalence_numeric >= 0 & prevalence_numeric <= 1)
-  cat("\ntransformed prevalence:", prevalence, "\u2192", prevalence_numeric, "\n")
+  cat("transformed prevalence:", 
+      format(prevalence, width = 5), "\u2192", 
+      format(round(prevalence_numeric, 5), nsmall = 5), "\n")
   return(prevalence_numeric)
 }
 
@@ -277,7 +282,7 @@ append_performances <- function(data){
                )
              })
 
-  cat("\n", ncol(performances), "columns added to the data table\n")
+  cat(ncol(performances), "columns added to the data table\n")
   
   data %>% 
     bind_cols(
@@ -313,8 +318,8 @@ run_validation_tests <- function(data, data_prior = NULL){
     stopifnot(all(sampledata_compare$y == sampledata_compare$y_prior))
     
     if(nrow(sampledata_prior) != nrow(sampledata_postr)){
-      cat("\nData sets for prior and adjusted risks do not have same length!",
-          "\nOnly cases which occur without missings in both data sets are used for validation test (", nrow(sampledata_compare), ")\n")
+      cat("Data sets for prior and adjusted risks do not have same length in analysis", data$Analysis_ID, "!",
+          "\nOnly cases which occur without missings in both data sets are used for validation test (", nrow(sampledata_compare), ")\n\n")
     }
     
   }
@@ -407,7 +412,9 @@ run_validation_tests <- function(data, data_prior = NULL){
   # 
   # }
 
-  cat("\ncomputed exact p-value:", round(pvals$pval_exacttest, 5), "( validation alternative hypothesis:", validation, ")\n")
+  cat(format(paste0("computed exact p-value: ", format(round(pvals$pval_exacttest, 5), 
+                                               nsmall = 5)), width = 35),
+      "( validation alternative hypothesis:", validation, ")\n")
   return(pvals)
 }
 
@@ -435,7 +442,6 @@ append_test_results <- function(data){
     } 
   })
   
-  cat("\n")
   cat(ncol(testresults), "columns added to the data table\n")
   
   bind_cols(
