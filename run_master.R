@@ -10,6 +10,10 @@ ids_to_compute <- c(
   "7_FMF_UK_MFs"
 )
 
+# should p-value for prior vs adjusted risk comparisons be computed, using mc nemar's test? (also using alpha = 0.025)
+# 'FALSE' means that only point estimates are compared to determine validation success
+pval_prior_vs_adj <- TRUE
+
 # update results time identifier
 output_time <- format(Sys.time(), '%Y-%m-%d_%H-%M-%S')
 rmarkdown::render("R/run_master_log.Rmd", 

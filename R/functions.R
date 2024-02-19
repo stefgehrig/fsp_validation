@@ -293,7 +293,7 @@ append_performances <- function(data){
 }
 
 # run validation hypothesis tests per row of the data table
-run_validation_tests <- function(data, data_prior = NULL){
+run_validation_tests <- function(data, data_prior = NULL, pval_prior_vs_adj = NULL){
   
   # extract from data table: cell counts that were returned by diagn_perf()
   tp <- data$tp
@@ -306,6 +306,8 @@ run_validation_tests <- function(data, data_prior = NULL){
   
   # extract from data table: case-level data for prior and posterior risks
   if(!is.null(data_prior)){
+    stopifnot(!is.null(pval_prior_vs_adj))
+    
     sampledata_postr <- data$sampledata[[1]]
     sampledata_prior <- data_prior$sampledata[[1]]
     
@@ -344,27 +346,22 @@ run_validation_tests <- function(data, data_prior = NULL){
         ))
     
     pvals <- tibble(
-      pval_exacttest = exacttest$p.value,
-      pval_scoretest = scoretest$p.value
+      exacttest = exacttest$p.value,
+      scoretest = scoretest$p.value
     ) %>% 
-      mutate(across(contains("pval"),
-                    .fns = list(signif = ~.x < 0.025),
-                    .names = "{.col}_{.fn}"))
+      mutate(success = exacttest < 0.025)
     
     # no tests required
   } else if(validation == "-"){
    
     pvals <- tibble(
-      pval_exacttest = NA_real_,
-      pval_scoretest = NA_real_,
-      pval_exacttest_signif = NA,
-      pval_scoretest_signif = NA
+      exacttest = NA_real_,
+      scoretest = NA_real_
     )
     
     # a single validation condition, based on comparison to the prior risk
   } else if(validation == "DR a.risk > DR prior") {
     
-    # implement an exact and score test version of mcnemar's test
     
     testdata <- sampledata_compare %>% 
       summarise(
@@ -372,40 +369,50 @@ run_validation_tests <- function(data, data_prior = NULL){
         disagree_total = sum(y_hat != y_hat_prior & y == 1)
       )
     
-    
-    exacttest <- binom.test(x = testdata$disagree_postr,
-                            n = testdata$disagree_total, 
-                            p = 1/2,
-                            alternative = "greater")
-    
-    suppressWarnings(
-      # no need for chi-squared approximation warnings
-      scoretest <- prop.test(
-        x = testdata$disagree_postr,
-        n = testdata$disagree_total,
-        p = 1 / 2,
-        alternative = "greater",
-        # no continuity correction, fully consistent with how
-        # wilson score intervals are computed in diagn_perf()
-        correct = FALSE
+    if(isTRUE(pval_prior_vs_adj)){
+      # implement an exact and score test version of mcnemar's test
+      exacttest <- binom.test(x = testdata$disagree_postr,
+                              n = testdata$disagree_total, 
+                              p = 1/2,
+                              alternative = "greater")
+      
+      suppressWarnings(
+        # no need for chi-squared approximation warnings
+        scoretest <- prop.test(
+          x = testdata$disagree_postr,
+          n = testdata$disagree_total,
+          p = 1 / 2,
+          alternative = "greater",
+          # no continuity correction, fully consistent with how
+          # wilson score intervals are computed in diagn_perf()
+          correct = FALSE
+        )
       )
-    )
-    
-    # check that my mcnemar test is working properly by comparing to built-in two-sided function
-    stopifnot(
-      round(mcnemar.test(sampledata_compare %>% 
-                     filter(y == 1) %>% 
-                     {table(.$y_hat, .$y_hat_prior)},
-                   correct = FALSE)$p.value / 2, 12) == round(scoretest$p.value, 12)
-    )
-    
-    pvals <- tibble(
-      pval_exacttest = exacttest$p.value,
-      pval_scoretest = scoretest$p.value
-    ) %>% 
-      mutate(across(contains("pval"),
-                    .fns = list(signif = ~.x < 0.025),
-                    .names = "{.col}_{.fn}"))
+      
+      # check that my mcnemar test is working properly by comparing to built-in two-sided function
+      stopifnot(
+        round(mcnemar.test(sampledata_compare %>% 
+                             filter(y == 1) %>% 
+                             {table(.$y_hat, .$y_hat_prior)},
+                           correct = FALSE)$p.value / 2, 12) == round(scoretest$p.value, 12)
+      )
+      
+      pvals <- tibble(
+        exacttest = exacttest$p.value,
+        scoretest = scoretest$p.value
+      )  %>% 
+        mutate(success = exacttest < 0.025)
+    } else{
+      
+      pvals <- tibble(
+        exacttest = NA_real_,
+        scoretest = NA_real_
+      ) %>% 
+        mutate(
+          success = testdata$disagree_postr > (testdata$disagree_total - testdata$disagree_postr)
+        )
+    }
+
   }
     
   # TODO: other possible conditions
@@ -413,7 +420,7 @@ run_validation_tests <- function(data, data_prior = NULL){
   # 
   # }
 
-  cat(format(paste0("computed exact p-value: ", format(round(pvals$pval_exacttest, 5), 
+  cat(format(paste0("computed exact p-value: ", format(round(pvals$exacttest, 5), 
                                                nsmall = 5)), width = 35),
       "( validation alternative hypothesis:", validation, ")\n")
   return(pvals)
@@ -421,7 +428,7 @@ run_validation_tests <- function(data, data_prior = NULL){
 
 
 # run validation hypothesis tests
-append_test_results <- function(data){
+append_test_results <- function(data, pval_prior_vs_adj){
   
   # find analysis that require prior risks
   requires_prior <- which(data$validation == "DR a.risk > DR prior")
@@ -438,7 +445,7 @@ append_test_results <- function(data){
       
       analysis_id_prior <- data$Analysis_ID[data$Agorithm_ID == data$Agorithm_ID[i] & grepl("MFs", data$Analysis_ID)]
       datarow_prior <- data[data$Analysis_ID == analysis_id_prior,]
-      run_validation_tests(data = datarow, data_prior = datarow_prior)
+      run_validation_tests(data = datarow, data_prior = datarow_prior, pval_prior_vs_adj = pval_prior_vs_adj)
       
     } 
   })

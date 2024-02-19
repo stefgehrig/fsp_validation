@@ -20,6 +20,10 @@ oview <- import_overview()
 # with prior risk performance, all dependent analyses must be selected jointly)
 # ids_to_compute <- c("6_FMF_UK_A1a", "6_FMF_UK_MFs")
 
+# should p-value for prior vs adjusted risk comparisons be computed, using mc nemar's test? (also using alpha = 0.025)
+# 'FALSE' means that only point estimates are compared to determine validation success
+# pval_prior_vs_adj <- TRUE
+
 #################################
 #### import and process data ####
 #################################
@@ -65,7 +69,7 @@ df <- append_performances(df)
 #### run validation tests ####
 ##############################
 # run validation hypothesis tests
-df <- append_test_results(df)
+df <- append_test_results(df, pval_prior_vs_adj = pval_prior_vs_adj)
 
 ########################
 #### export results ####
