@@ -21,6 +21,16 @@ pre{font-size: 10px}
 knitr::kable(data.frame(ids_to_compute))
 ```
 
+### How are prior and adjusted risks compared?
+
+When part of the validation, criterion was used:
+
+```{r, echo = FALSE}
+print(ifelse(
+  pval_prior_vs_adj == TRUE, "null hypothesis test with formal comparison", "only numerical values of point estimators compared"
+))
+```
+
 ### Print log for script run
 
 ```{r}

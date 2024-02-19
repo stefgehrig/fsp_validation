@@ -22,7 +22,7 @@ oview <- import_overview()
 
 # should p-value for prior vs adjusted risk comparisons be computed, using mc nemar's test? (also using alpha = 0.025)
 # 'FALSE' means that only point estimates are compared to determine validation success
-# pval_prior_vs_adj <- TRUE
+# pval_prior_vs_adj <- FALSE
 
 #################################
 #### import and process data ####

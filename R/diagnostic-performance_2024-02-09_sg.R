@@ -178,7 +178,8 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
   fn_modified <- (tp+fp+fn+tn) * (prevalence)   * (fn / (fn+tp))
   tp_modified <- (tp+fp+fn+tn) * (prevalence)   * (tp / (fn+tp))
   # note: this method should only work well in terms of correct coverage if prevalence in data and 
-  # desired prevalence are roughly of comparable magnitude.
+  # desired prevalence are roughly of comparable magnitude. (prevalence-corrected point estimates
+  # are always correct.)
   # the "modified sample size" of the proportion estimation for NPV and PPV is not controlled in 
   # this approach (only the full sample size in the ontingency table, i.e., sum of margins), which can lead to 
   # over- and underestimation of uncertainty. ideally, one would derive a test or interval
