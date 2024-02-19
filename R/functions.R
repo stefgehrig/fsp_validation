@@ -59,13 +59,13 @@ append_data_tables <- function(oview, ids_to_compute){
     mutate(
       Data_Filename = case_when(
         type == "PE" ~ paste0("FSP_Exchange/data/PE/", Data_Filename),
-        type == "Trisomie" ~ paste0("---", Data_Filename),
+        type == "Trisomie" ~ paste0("---", Data_Filename), # TODO
         TRUE ~ NA_character_
       ),
       Outcomes_Filename =
         case_when(
           type == "PE" ~ "FSP_Exchange/data/PE/Merge_ID_outcome_PE.xlsx",
-          type == "Trisomie" ~ "---",
+          type == "Trisomie" ~ "---", # TODO
           TRUE ~ NA_character_
         ),
       Outcomes_Filename_Sheet =
@@ -73,7 +73,7 @@ append_data_tables <- function(oview, ids_to_compute){
           type == "PE" & Trimester == 1 ~ "PE 1T",
           type == "PE" & Trimester == 2 ~ "PE 2T",
           type == "PE" & Trimester == 3 ~ "PE 3T",
-          type == "Trisomie" ~ "---",
+          type == "Trisomie" ~ "---", # TODO
           TRUE ~ NA_character_
         )
     )
