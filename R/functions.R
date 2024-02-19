@@ -135,21 +135,23 @@ append_data_tables <- function(oview, ids_to_compute){
   return(df)
 }
 
-
 # build harmonized outcome vectors
 build_binary_endpoints <- function(ep_condition, ep_data){
-  if(!str_detect(ep_condition, "PE")){
+  if(!str_detect(ep_condition, "PE<")){
     # y <- as.numeric(...) 
     # TODO: for trisomy
-  } else{
+  } else if(str_detect(ep_condition, "PE<")){
     max_weeks <- parse_number(ep_condition)
     stopifnot(nchar(max_weeks) == 2L)
     y <- as.numeric(ep_data$Pregnancy.outcome == "PE" & ep_data$out.ga < max_weeks)
+  } else{
+    # not supported
+    
   }
   
   cat("observed prop | condition:", paste0(format(round(mean(y), 5), nsmall = 5),
                                         " (", format(sum(y), width = 4), " / ", 
-                                        format(length(y), width = 5), ") | ",
+                                        format(sum(!is.na(y)), width = 5), ") | ",
                                         ep_condition, "\n"))
   
   tibble(
@@ -238,17 +240,16 @@ compute_numeric_cutoffs <- function(cutoff, sampledata){
 # compute all desired prevalences on probability scale as numeric vector
 compute_numeric_prevalences <- function(prevalence, sampledata){
   
-  # case should not exist; either given or NA for existing endpoints
-  stopifnot(prevalence != "-")
+  # case should not exist; either given as string of digits or NA for existing endpoints
+  stopifnot(!grepl("\\D", prevalence))
   
-  if(as.numeric(prevalence)%%1==0) {
-    # prevalence is given as reciprocal in form of an integer:
-    prevalence_numeric <- 1/as.numeric(prevalence)
-    
-    # prevalence from sample data is used:
-  } else if(is.na(prevalence)) {
+  # prevalence from sample data is used:
+  if(is.na(prevalence)) {
     prevalence_numeric <- mean(sampledata$y)
     
+  } else if(as.numeric(prevalence)%%1==0) {
+    # prevalence is given as reciprocal in form of an integer:
+    prevalence_numeric <- 1/as.numeric(prevalence)
   } else {
     # not supported cases
     prevalence_numeric <- NA_real_
@@ -319,7 +320,7 @@ run_validation_tests <- function(data, data_prior = NULL){
     
     if(nrow(sampledata_prior) != nrow(sampledata_postr)){
       cat("Data sets for prior and adjusted risks do not have same length in analysis", data$Analysis_ID, "!",
-          "\nOnly cases which occur without missings in both data sets are used for validation test (", nrow(sampledata_compare), ")\n\n")
+          "\nOnly cases which occur without missings in both data sets are used for validation test (", nrow(sampledata_compare), ")\n")
     }
     
   }
