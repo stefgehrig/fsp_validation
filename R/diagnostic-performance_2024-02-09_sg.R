@@ -170,12 +170,19 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
   res$n_total[1] <- n_total <- ct["Sum","Sum"]
   res$mis_ref_or_test[1] = n_total - n_ref_and_test
   
+  # ad-hoc method for inference on prevalence-corrected contingeny tables:
   # create a MODIFIED contintency table, which only changes the prevalence to accord to pre-specified one
   # (the entries are allowed to be non-integer counts; all upcoming statistical functions can deal with this)
   tn_modified <- (tp+fp+fn+tn) * (1-prevalence) * (tn / (tn+fp))
   fp_modified <- (tp+fp+fn+tn) * (1-prevalence) * (fp / (tn+fp))
   fn_modified <- (tp+fp+fn+tn) * (prevalence)   * (fn / (fn+tp))
   tp_modified <- (tp+fp+fn+tn) * (prevalence)   * (tp / (fn+tp))
+  # note: this method should only work well in terms of correct coverage if prevalence in data and 
+  # desired prevalence are roughly of comparable magnitude.
+  # the "modified sample size" of the proportion estimation for NPV and PPV is not controlled in 
+  # this approach (only the full sample size in the ontingency table, i.e., sum of margins), which can lead to 
+  # over- and underestimation of uncertainty. ideally, one would derive a test or interval
+  # from first principles or introduce further constraints on the "modified sample size".
 
   #---------------------------------------------------------------------------------------------.
   # performance measures: DR, Specificity, FPR, PPV, NPV ####
