@@ -127,11 +127,6 @@ append_data_tables <- function(oview, ids_to_compute){
   cat("\nsample size outc:\n", paste0(  map_dbl(df$ep_data, nrow),"\n"))
   stopifnot(all(map_dbl(df$fsp_data, nrow) == map_dbl(df$ep_data, nrow)))
   
-  # add a sample size column
-  df <- df %>% mutate(
-    total_sample_size = map_dbl(df$fsp_data, nrow)
-  )
-  
   return(df)
 }
 
@@ -144,19 +139,23 @@ build_binary_endpoints <- function(ep_condition, ep_data){
     max_weeks <- parse_number(ep_condition)
     stopifnot(nchar(max_weeks) == 2L)
     y <- as.numeric(ep_data$Pregnancy.outcome == "PE" & ep_data$out.ga < max_weeks)
+    other_endpoint <- ep_data$Pregnancy.outcome == "PE" & !y
+    
   } else{
     # not supported
     
   }
   
-  cat("observed prop | condition:", paste0(format(round(mean(y), 5), nsmall = 5),
-                                        " (", format(sum(y), width = 4), " / ", 
-                                        format(sum(!is.na(y)), width = 5), ") | ",
-                                        ep_condition, "\n"))
+  cat("observed prop | condition | removed due to other endpoint:", paste0(format(round(mean(y[!other_endpoint]), 5), nsmall = 5),
+                                        " (", format(sum(y[!other_endpoint]), width = 4), " / ", 
+                                        format(sum(!is.na(y[!other_endpoint])), width = 5), ") | ",
+                                        ep_condition, " | ",
+                                        sum(other_endpoint),
+                                        "\n"))
   
   tibble(
-    patient_id = ep_data$patient_id,
-    y = y
+    patient_id = ep_data$patient_id[!other_endpoint],
+    y = y[!other_endpoint]
   )
 }
 
@@ -172,7 +171,6 @@ build_measurements <- function(ep_condition, fsp_data){
     stopifnot(nchar(max_weeks) == 2L)
     column_id <- which(grepl("post_PE", names(fsp_data)) & grepl(max_weeks, names(fsp_data)))
     stopifnot(length(column_id)==1)
-    
     
     pr <- fsp_data %>% pull(!!as.symbol(names(fsp_data)[column_id]))
   }
@@ -193,7 +191,8 @@ merge_endpoints_measurements <- function(ep_data_clean, fsp_data_clean){
     ep_data_clean %>% 
       left_join(fsp_data_clean, by = join_by("patient_id" == "sample_id"))
   )
-  cat("rows of merged table:", paste0(nrow(temp)), "\n")
+  
+  cat("rows of merged table:", nrow(temp), "\n")
   return(temp)
   
 }

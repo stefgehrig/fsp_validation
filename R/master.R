@@ -18,7 +18,7 @@ oview <- import_overview()
 # select analyses to run (allows to run only a subset)
 # (if an analysis is dependent on another analysis, i.e., when comparing posterior
 # with prior risk performance, all dependent analyses must be selected jointly)
-# ids_to_compute <- c("6_FMF_UK_A1a", "6_FMF_UK_MFs")
+# ids_to_compute <- c()
 
 # should p-value for prior vs adjusted risk comparisons be computed, using mc nemar's test? (also using alpha = 0.025)
 # 'FALSE' means that only point estimates are compared to determine validation success
