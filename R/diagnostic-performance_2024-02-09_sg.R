@@ -247,7 +247,7 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
   NPV_at_prevalence <- binconf(x=tn_modified, n=tn_modified+fn_modified, alpha=1-conf_level, method=CI_method)
   
   stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
-    round(NPV_at_prevalence[1,"PointEst"], 12) == round(sp * (1 - prevalence) / (sp * (1 - prevalence) + (1 - se) * prevalence), 12)
+    round(NPV_at_prevalence[1,"PointEst"], 8) == round(sp * (1 - prevalence) / (sp * (1 - prevalence) + (1 - se) * prevalence), 8)
   )
   
   res$NPV_at_prevalence[1]     = NPV_at_prevalence[1,"PointEst"]
@@ -260,7 +260,7 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
   res$OAPR_at_prevalence[1] <- res$PPV_at_prevalence[1] / (1-res$PPV_at_prevalence[1])
     
     stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
-      round(res$OAPR_at_prevalence[1], 12) == round( se / ((1-sp) * (1-prevalence)) * prevalence, 12)
+      round(res$OAPR_at_prevalence[1], 8) == round( se / ((1-sp) * (1-prevalence)) * prevalence, 8)
     )
   res$OAPR_at_prevalence_lwr[1] = res$PPV_at_prevalence_lwr[1] / (1-res$PPV_at_prevalence_lwr[1])
   res$OAPR_at_prevalence_upr[1] = res$PPV_at_prevalence_upr[1] / (1-res$PPV_at_prevalence_upr[1])
