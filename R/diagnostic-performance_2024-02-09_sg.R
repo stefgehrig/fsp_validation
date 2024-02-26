@@ -3,6 +3,7 @@
 # - renaming of some columns
 # - allow to specify a prevalence for NPV / PPV calculations and their intervals
 # - added calculations for OAPR
+# - allow for absence of positive cases, ensuring constant dimension of contingency table
 
 ################################################################################
 ## Function diagn_perf                                                        ##
@@ -51,9 +52,12 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
                         conf_level=0.95, conf_type="Wilson", n_dig_prop=2, n_dig_lr=2, n_dig_odds=3, ...){
   
   # check if positive class and negative class (entry not positive and not missing) are both found in the respective data columns
+  
+  
+  if( sum( d[,ref_outcome] ==ref_pos,  na.rm=T )==0 &  sum( d[,test_outcome]!=test_pos, na.rm=T )==0 ) { stop("function diagn_perf: neither positive outcome, nor prediction found") }
   if( sum( d[,ref_outcome] ==ref_pos,  na.rm=T )==0 ){ no_cases <- TRUE } else { no_cases <- FALSE }
   if( sum( d[,ref_outcome] !=ref_pos,  na.rm=T )==0 ){ stop("function diagn_perf: negative class not found in reference outcome") }
-  if( sum( d[,test_outcome]==test_pos, na.rm=T )==0 ){ stop("function diagn_perf: positive class not found in test outcome") }
+  if( sum( d[,test_outcome]==test_pos, na.rm=T )==0 ){ no_predicted_cases <- TRUE } else { no_predicted_cases <- FALSE }
   if( sum( d[,test_outcome]!=test_pos, na.rm=T )==0 ){ stop("function diagn_perf: negative class not found in test outcome") }
   # for testing stopping conditions:
   # ref_pos="Yes"
@@ -62,7 +66,7 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
   # d$outspe2 = ifelse( d$outspe=="Yes", NA, as.character(d$outspe)) # no entry "Yes" for positive class
   # d$outspe2[sample(x=nrow(d),size=30)] <- NA
   # table(new=d$outspe2, old=d$outspe, useNA="a")
-    
+  
   #---------------------------------------------------------------------------------------------.
   #### data processing ####
   
@@ -239,19 +243,6 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
                            "% (", sprintf( 100*res$DR_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$DR_upr[1], fmt=fmt ), ")", sep="")
     
     
-    # PPV at a specified prevalence
-    PPV_at_prevalence <- binconf(x=tp_modified, n=tp_modified+fp_modified, alpha=1-conf_level, method=CI_method)
-    
-    stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
-      round(PPV_at_prevalence[1,"PointEst"], 12) ==  round(se * prevalence / (se * prevalence + (1 - sp) * (1-prevalence)), 12)
-    )
-    
-    res$PPV_at_prevalence[1]     = PPV_at_prevalence[1,"PointEst"]
-    res$PPV_at_prevalence_lwr[1] = PPV_at_prevalence[1,"Lower"]
-    res$PPV_at_prevalence_upr[1] = PPV_at_prevalence[1,"Upper"]
-    res$PPV_at_prevalence_str[1] = paste( sprintf( 100*res$PPV_at_prevalence[1], fmt=fmt ),
-                                          "% (", sprintf( 100*res$PPV_at_prevalence_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$PPV_at_prevalence_upr[1], fmt=fmt ), ")", sep="")
-    
     # NPV at a specified prevalence
     NPV_at_prevalence <- binconf(x=tn_modified, n=tn_modified+fn_modified, alpha=1-conf_level, method=CI_method)
     
@@ -265,16 +256,34 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
     res$NPV_at_prevalence_str[1] = paste( sprintf( 100*res$NPV_at_prevalence[1], fmt=fmt ),
                                           "% (", sprintf( 100*res$NPV_at_prevalence_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$NPV_at_prevalence_upr[1], fmt=fmt ), ")", sep="")
     
-    # OAPR
-    res$OAPR_at_prevalence[1] <- res$PPV_at_prevalence[1] / (1-res$PPV_at_prevalence[1])
-    
-    stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
-      round(res$OAPR_at_prevalence[1], 8) == round( se / ((1-sp) * (1-prevalence)) * prevalence, 8)
-    )
-    res$OAPR_at_prevalence_lwr[1] = res$PPV_at_prevalence_lwr[1] / (1-res$PPV_at_prevalence_lwr[1])
-    res$OAPR_at_prevalence_upr[1] = res$PPV_at_prevalence_upr[1] / (1-res$PPV_at_prevalence_upr[1])
-    res$OAPR_at_prevalence_str[1] = paste( sprintf( res$OAPR_at_prevalence[1], fmt=fmt_odds ),
-                                           " (", sprintf( res$OAPR_at_prevalence_lwr[1], fmt=fmt_odds ), ", ", sprintf( res$OAPR_at_prevalence_upr[1], fmt=fmt_odds ), ")", sep="")
+    if(!no_predicted_cases){
+      
+      # PPV at a specified prevalence
+      PPV_at_prevalence <- binconf(x=tp_modified, n=tp_modified+fp_modified, alpha=1-conf_level, method=CI_method)
+      
+      stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
+        round(PPV_at_prevalence[1,"PointEst"], 12) ==  round(se * prevalence / (se * prevalence + (1 - sp) * (1-prevalence)), 12)
+      )
+      
+      res$PPV_at_prevalence[1]     = PPV_at_prevalence[1,"PointEst"]
+      res$PPV_at_prevalence_lwr[1] = PPV_at_prevalence[1,"Lower"]
+      res$PPV_at_prevalence_upr[1] = PPV_at_prevalence[1,"Upper"]
+      res$PPV_at_prevalence_str[1] = paste( sprintf( 100*res$PPV_at_prevalence[1], fmt=fmt ),
+                                            "% (", sprintf( 100*res$PPV_at_prevalence_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$PPV_at_prevalence_upr[1], fmt=fmt ), ")", sep="")
+      
+      # OAPR
+      res$OAPR_at_prevalence[1] <- res$PPV_at_prevalence[1] / (1-res$PPV_at_prevalence[1])
+      
+      stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
+        round(res$OAPR_at_prevalence[1], 8) == round( se / ((1-sp) * (1-prevalence)) * prevalence, 8)
+      )
+      res$OAPR_at_prevalence_lwr[1] = res$PPV_at_prevalence_lwr[1] / (1-res$PPV_at_prevalence_lwr[1])
+      res$OAPR_at_prevalence_upr[1] = res$PPV_at_prevalence_upr[1] / (1-res$PPV_at_prevalence_upr[1])
+      res$OAPR_at_prevalence_str[1] = paste( sprintf( res$OAPR_at_prevalence[1], fmt=fmt_odds ),
+                                             " (", sprintf( res$OAPR_at_prevalence_lwr[1], fmt=fmt_odds ), ", ", sprintf( res$OAPR_at_prevalence_upr[1], fmt=fmt_odds ), ")", sep="")
+      
+      
+    }
     
   }
 

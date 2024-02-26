@@ -1,7 +1,7 @@
 # import overview table
 import_overview <- function(){
   # import analysis overview table
-  oview <- as_tibble(openxlsx::read.xlsx("FSP_Exchange/data/Overview_Stat_Analyses_addedCutoffs.xlsx", 
+  oview <- as_tibble(openxlsx::read.xlsx("FSP_Exchange/data/Overview_Stat_Analyses.xlsx", 
                                          sheet = "Statistics", 
                                          rows = 2:1e3,
                                          detectDates = TRUE)) %>% 
@@ -240,7 +240,7 @@ build_measurements <- function(ep_condition, fsp_data, analysis_id){
   }
   
   cat("column | missings | mean: ")
-  cat(format(names(fsp_data)[column_id], width = 12), "|", format(sum(is.na(pr)), width = 4), "|",
+  cat(format(names(fsp_data)[column_id], width = 20), "|", format(sum(is.na(pr)), width = 4), "|",
       paste0(format(round(mean(pr, na.rm = TRUE), 5), nsmall = 5)), "\n")
 
   tibble(
@@ -579,7 +579,12 @@ append_test_results <- function(data, pval_prior_vs_adj){
       analysis_id_prior <- data$Analysis_ID[data$Agorithm_ID == data$Agorithm_ID[i] & # same algorithm ...
                                               data$Cohort_ID == data$Cohort_ID[i] & # ... and same pregnancies ...
                                               endsWith(data$Analysis_ID, "_MFs")] # ... but maternal factors only
-      datarow_prior <- data[data$Analysis_ID == analysis_id_prior,]
+      analysis_id_prior <- unique(analysis_id_prior)
+      stopifnot(length(analysis_id_prior) == 1L)
+
+      datarow_prior <- data[data$Analysis_ID == analysis_id_prior & data$condition == data$condition[i],]
+      stopifnot(nrow(datarow_prior) == 1L)
+      
       run_validation_tests(data = datarow, data_prior = datarow_prior, pval_prior_vs_adj = pval_prior_vs_adj)
       
     } 

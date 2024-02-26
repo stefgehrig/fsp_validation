@@ -34,11 +34,17 @@ ids_to_compute <- c(
   "2_FMF_UK_A8_DC",
   "2_FMF_UK_A9_MC",
   "2_FMF_UK_A9_DC",
-  "3_FMF_UK_A1",
-  "3_FMF_UK_A2",
-  "3_FMF_UK_A3",
-  "3_FMF_UK_A4",
-  "3_FMF_UK_A5",
+  "3_FMF_UK_A1a",
+  "3_FMF_UK_A1b",
+  "3_FMF_UK_A2a",
+  "3_FMF_UK_A2b",
+  "3_FMF_UK_A3a",
+  "3_FMF_UK_A3b",
+  "3_FMF_UK_A4a",
+  "3_FMF_UK_A4b",
+  "3_FMF_UK_A5a",
+  "3_FMF_UK_A5b",
+  "3_FMF_UK_MFs",
   "3_FMF_UK_A6",
   "3_FMF_UK_A7_MC",
   "3_FMF_UK_A7_DC",
@@ -96,27 +102,13 @@ df$sampledata <- map2(df$sampledata, df$cutoff_numeric,
 df$prevalence_numeric <- map2_dbl(df$prevalence, df$sampledata,
                                   compute_numeric_prevalences)
 
-# #-----------
-# df
-# # remove those with no positiev class
-# df <- df %>% filter(Analysis_ID != "2_FMF_UK_A4", 
-#                     Analysis_ID != "2_FMF_UK_A9_MC")
-#####-------
-
 # compute the seven performance measures
 df <- append_performances(df)
 
 ##############################
 #### run validation tests ####
 ##############################
-
-# #-----------
-# # remove those with no prior row
-# df
-# df <- df %>% filter(validation != "DR a.risk > DR prior")
-# df
-# #####-------
-
+debugonce(append_test_results)
 # run validation hypothesis tests
 df <- append_test_results(df, pval_prior_vs_adj = pval_prior_vs_adj)
 
