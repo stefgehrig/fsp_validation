@@ -53,7 +53,6 @@ append_data_tables <- function(oview, ids_to_compute){
   cat("\nanalysis ids:\n", paste0(df$Analysis_ID, "\n"))
   
   # extract type of outcome
-  stopifnot()
   df <- df %>% 
     mutate(
       type = case_when(
