@@ -69,7 +69,7 @@ df$ep_data_clean <- map2(df$condition, df$ep_data,
                          build_binary_endpoints)
 
 # build harmonized fsp measurement vectors
-df$fsp_data_clean <- map2(df$condition, df$fsp_data,
+df$fsp_data_clean <- pmap(list(df$condition, df$fsp_data, df$Analysis_ID),
                           build_measurements)
 
 # merge cleaned outcomes with cleaned measurements

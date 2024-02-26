@@ -196,7 +196,7 @@ build_binary_endpoints <- function(ep_condition, ep_data){
 }
 
 # build harmonized measurement vectors
-build_measurements <- function(ep_condition, fsp_data){
+build_measurements <- function(ep_condition, fsp_data, analysis_id){
   
   if(ep_condition %in% c("T21", "T18", "T13", "T18/13")){
 
@@ -204,12 +204,19 @@ build_measurements <- function(ep_condition, fsp_data){
       paste(ifelse(grepl("^[0-9]", outcome), paste0("T", outcome), outcome), collapse = "")
     })) # need form "T18T13" for double condition
 
-    column_name <- paste0("post_",  ep_condition_merged) 
-    # even if there are twins which ...
-    # - have two post risks that might differ (2_FMF_UK DC),
-    # - have two post risks that are same (2_FMF_UK MC)
-    # - have only one risk (3_FMF_UK)
-    # ... this uses only first twin
+    # check via analysis id whether this is an analysis of maternal factors only in trisomy
+    # (a different column name will then need to be selected)
+    if(endsWith(analysis_id, "MFs")){
+      column_name <- paste0("background_",  ep_condition_merged)
+    } else{
+      column_name <- paste0("post_",  ep_condition_merged) 
+      # even if there are twins which ...
+      # - have two post risks that might differ (2_FMF_UK DC),
+      # - have two post risks that are same (2_FMF_UK MC)
+      # - have only one risk (3_FMF_UK)
+      # ... this uses only first twin
+    }
+
     column_id <- which(names(fsp_data) == column_name)
     stopifnot(length(column_id) == 1)
     pr <- fsp_data %>% pull(!!as.symbol(names(fsp_data)[column_id]))
@@ -569,7 +576,9 @@ append_test_results <- function(data, pval_prior_vs_adj){
       # run analyses that need prior risks
     } else if(i %in% requires_prior){
       
-      analysis_id_prior <- data$Analysis_ID[data$Agorithm_ID == data$Agorithm_ID[i] & grepl("MFs", data$Analysis_ID)]
+      analysis_id_prior <- data$Analysis_ID[data$Agorithm_ID == data$Agorithm_ID[i] & # same algorithm ...
+                                              data$Cohort_ID == data$Cohort_ID[i] & # ... and same pregnancies ...
+                                              endsWith(data$Analysis_ID, "_MFs")] # ... but maternal factors only
       datarow_prior <- data[data$Analysis_ID == analysis_id_prior,]
       run_validation_tests(data = datarow, data_prior = datarow_prior, pval_prior_vs_adj = pval_prior_vs_adj)
       

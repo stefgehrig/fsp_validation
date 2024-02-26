@@ -51,7 +51,7 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
                         conf_level=0.95, conf_type="Wilson", n_dig_prop=2, n_dig_lr=2, n_dig_odds=3, ...){
   
   # check if positive class and negative class (entry not positive and not missing) are both found in the respective data columns
-  if( sum( d[,ref_outcome] ==ref_pos,  na.rm=T )==0 ){ stop("function diagn_perf: positive class not found in reference outcome") }
+  if( sum( d[,ref_outcome] ==ref_pos,  na.rm=T )==0 ){ no_cases <- TRUE } else { no_cases <- FALSE }
   if( sum( d[,ref_outcome] !=ref_pos,  na.rm=T )==0 ){ stop("function diagn_perf: negative class not found in reference outcome") }
   if( sum( d[,test_outcome]==test_pos, na.rm=T )==0 ){ stop("function diagn_perf: positive class not found in test outcome") }
   if( sum( d[,test_outcome]!=test_pos, na.rm=T )==0 ){ stop("function diagn_perf: negative class not found in test outcome") }
@@ -79,6 +79,10 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
   d$test_outcome_bin[ d[,test_outcome]!=test_pos ] <- "negative"
   d$test_outcome_bin[ is.na(d[,test_outcome]) ]   <- NA
   #addmargins( table( new=d$test_outcome_bin, old=t(d[,test_outcome]), useNA="a"))
+  
+  # ensure constant dimension of contingency table, even in case of missing positive reference class
+  d$ref_outcome_bin = factor(d$ref_outcome_bin, levels = c("negative", "positive"))
+  d$test_outcome_bin = factor(d$test_outcome_bin, levels = c("negative", "positive"))
   
   #---------------------------------------------------------------------------------------------.
   # results table format ####
@@ -198,22 +202,15 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
   fmt = paste("%.",n_dig_prop,"f", sep="")
   fmt_odds = paste("%.",n_dig_odds,"f", sep="")
   
-  # DR
-  sens = binconf(x=tp, n=tp+fn, alpha=1-conf_level, method=CI_method)
-  res$DR[1] <- se <- sens[1,"PointEst"]
-  res$DR_lwr[1]    = sens[1,"Lower"]
-  res$DR_upr[1]    = sens[1,"Upper"]
-  res$DR_str[1] = paste( sprintf( 100*res$DR[1], fmt=fmt ), 
-                               "% (", sprintf( 100*res$DR_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$DR_upr[1], fmt=fmt ), ")", sep="")
-    
-  # Specificity
-  spec = binconf(x=tn, n=tn+fp, alpha=1-conf_level, method=CI_method)
-  res$Specificity[1] <- sp <- spec[1,"PointEst"]
-  res$Specificity_lwr[1]    = spec[1,"Lower"]
-  res$Specificity_upr[1]    = spec[1,"Upper"]
-  res$Specificity_str[1] = paste( sprintf( 100*res$Specificity[1], fmt=fmt ), 
-                               "% (", sprintf( 100*res$Specificity_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$Specificity_upr[1], fmt=fmt ), ")", sep="")
-
+  
+  # False Positive Rate (FPR)
+  FPR = binconf(x=fp, n=tn+fp, alpha=1-conf_level, method=CI_method)
+  res$FPR[1]        = FPR[1,"PointEst"]
+  res$FPR_lwr[1]    = FPR[1,"Lower"]
+  res$FPR_upr[1]    = FPR[1,"Upper"]
+  res$FPR_str[1] = paste( sprintf( 100*res$FPR[1], fmt=fmt ), 
+                          "% (", sprintf( 100*res$FPR_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$FPR_upr[1], fmt=fmt ), ")", sep="")
+  
   # Screen positive rate (SPR)
   SPR = binconf(x=fp+tp, n=tn+fn+fp+tp, alpha=1-conf_level, method=CI_method)
   res$SPR[1]        = SPR[1,"PointEst"]
@@ -222,50 +219,65 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
   res$SPR_str[1] = paste( sprintf( 100*res$SPR[1], fmt=fmt ), 
                           "% (", sprintf( 100*res$SPR_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$SPR_upr[1], fmt=fmt ), ")", sep="")
   
-  # False Positive Rate (FPR)
-  FPR = binconf(x=fp, n=tn+fp, alpha=1-conf_level, method=CI_method)
-  res$FPR[1]        = FPR[1,"PointEst"]
-  res$FPR_lwr[1]    = FPR[1,"Lower"]
-  res$FPR_upr[1]    = FPR[1,"Upper"]
-  res$FPR_str[1] = paste( sprintf( 100*res$FPR[1], fmt=fmt ), 
-                                  "% (", sprintf( 100*res$FPR_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$FPR_upr[1], fmt=fmt ), ")", sep="")
   
-  # PPV at a specified prevalence
-  PPV_at_prevalence <- binconf(x=tp_modified, n=tp_modified+fp_modified, alpha=1-conf_level, method=CI_method)
-
-  stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
-    round(PPV_at_prevalence[1,"PointEst"], 12) ==  round(se * prevalence / (se * prevalence + (1 - sp) * (1-prevalence)), 12)
-  )
+  # Specificity
+  spec = binconf(x=tn, n=tn+fp, alpha=1-conf_level, method=CI_method)
+  res$Specificity[1] <- sp <- spec[1,"PointEst"]
+  res$Specificity_lwr[1]    = spec[1,"Lower"]
+  res$Specificity_upr[1]    = spec[1,"Upper"]
+  res$Specificity_str[1] = paste( sprintf( 100*res$Specificity[1], fmt=fmt ), 
+                                  "% (", sprintf( 100*res$Specificity_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$Specificity_upr[1], fmt=fmt ), ")", sep="")
   
-  res$PPV_at_prevalence[1]     = PPV_at_prevalence[1,"PointEst"]
-  res$PPV_at_prevalence_lwr[1] = PPV_at_prevalence[1,"Lower"]
-  res$PPV_at_prevalence_upr[1] = PPV_at_prevalence[1,"Upper"]
-  res$PPV_at_prevalence_str[1] = paste( sprintf( 100*res$PPV_at_prevalence[1], fmt=fmt ),
-                               "% (", sprintf( 100*res$PPV_at_prevalence_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$PPV_at_prevalence_upr[1], fmt=fmt ), ")", sep="")
-  
-  # NPV at a specified prevalence
-  NPV_at_prevalence <- binconf(x=tn_modified, n=tn_modified+fn_modified, alpha=1-conf_level, method=CI_method)
-  
-  stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
-    round(NPV_at_prevalence[1,"PointEst"], 8) == round(sp * (1 - prevalence) / (sp * (1 - prevalence) + (1 - se) * prevalence), 8)
-  )
-  
-  res$NPV_at_prevalence[1]     = NPV_at_prevalence[1,"PointEst"]
-  res$NPV_at_prevalence_lwr[1] = NPV_at_prevalence[1,"Lower"]
-  res$NPV_at_prevalence_upr[1] = NPV_at_prevalence[1,"Upper"]
-  res$NPV_at_prevalence_str[1] = paste( sprintf( 100*res$NPV_at_prevalence[1], fmt=fmt ),
-                                        "% (", sprintf( 100*res$NPV_at_prevalence_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$NPV_at_prevalence_upr[1], fmt=fmt ), ")", sep="")
-  
-  # OAPR
-  res$OAPR_at_prevalence[1] <- res$PPV_at_prevalence[1] / (1-res$PPV_at_prevalence[1])
+  if(!no_cases){
+   
+    # DR
+    sens = binconf(x=tp, n=tp+fn, alpha=1-conf_level, method=CI_method)
+    res$DR[1] <- se <- sens[1,"PointEst"]
+    res$DR_lwr[1]    = sens[1,"Lower"]
+    res$DR_upr[1]    = sens[1,"Upper"]
+    res$DR_str[1] = paste( sprintf( 100*res$DR[1], fmt=fmt ), 
+                           "% (", sprintf( 100*res$DR_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$DR_upr[1], fmt=fmt ), ")", sep="")
+    
+    
+    # PPV at a specified prevalence
+    PPV_at_prevalence <- binconf(x=tp_modified, n=tp_modified+fp_modified, alpha=1-conf_level, method=CI_method)
+    
+    stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
+      round(PPV_at_prevalence[1,"PointEst"], 12) ==  round(se * prevalence / (se * prevalence + (1 - sp) * (1-prevalence)), 12)
+    )
+    
+    res$PPV_at_prevalence[1]     = PPV_at_prevalence[1,"PointEst"]
+    res$PPV_at_prevalence_lwr[1] = PPV_at_prevalence[1,"Lower"]
+    res$PPV_at_prevalence_upr[1] = PPV_at_prevalence[1,"Upper"]
+    res$PPV_at_prevalence_str[1] = paste( sprintf( 100*res$PPV_at_prevalence[1], fmt=fmt ),
+                                          "% (", sprintf( 100*res$PPV_at_prevalence_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$PPV_at_prevalence_upr[1], fmt=fmt ), ")", sep="")
+    
+    # NPV at a specified prevalence
+    NPV_at_prevalence <- binconf(x=tn_modified, n=tn_modified+fn_modified, alpha=1-conf_level, method=CI_method)
+    
+    stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
+      round(NPV_at_prevalence[1,"PointEst"], 8) == round(sp * (1 - prevalence) / (sp * (1 - prevalence) + (1 - se) * prevalence), 8)
+    )
+    
+    res$NPV_at_prevalence[1]     = NPV_at_prevalence[1,"PointEst"]
+    res$NPV_at_prevalence_lwr[1] = NPV_at_prevalence[1,"Lower"]
+    res$NPV_at_prevalence_upr[1] = NPV_at_prevalence[1,"Upper"]
+    res$NPV_at_prevalence_str[1] = paste( sprintf( 100*res$NPV_at_prevalence[1], fmt=fmt ),
+                                          "% (", sprintf( 100*res$NPV_at_prevalence_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$NPV_at_prevalence_upr[1], fmt=fmt ), ")", sep="")
+    
+    # OAPR
+    res$OAPR_at_prevalence[1] <- res$PPV_at_prevalence[1] / (1-res$PPV_at_prevalence[1])
     
     stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
       round(res$OAPR_at_prevalence[1], 8) == round( se / ((1-sp) * (1-prevalence)) * prevalence, 8)
     )
-  res$OAPR_at_prevalence_lwr[1] = res$PPV_at_prevalence_lwr[1] / (1-res$PPV_at_prevalence_lwr[1])
-  res$OAPR_at_prevalence_upr[1] = res$PPV_at_prevalence_upr[1] / (1-res$PPV_at_prevalence_upr[1])
-  res$OAPR_at_prevalence_str[1] = paste( sprintf( res$OAPR_at_prevalence[1], fmt=fmt_odds ),
-                                        " (", sprintf( res$OAPR_at_prevalence_lwr[1], fmt=fmt_odds ), ", ", sprintf( res$OAPR_at_prevalence_upr[1], fmt=fmt_odds ), ")", sep="")
+    res$OAPR_at_prevalence_lwr[1] = res$PPV_at_prevalence_lwr[1] / (1-res$PPV_at_prevalence_lwr[1])
+    res$OAPR_at_prevalence_upr[1] = res$PPV_at_prevalence_upr[1] / (1-res$PPV_at_prevalence_upr[1])
+    res$OAPR_at_prevalence_str[1] = paste( sprintf( res$OAPR_at_prevalence[1], fmt=fmt_odds ),
+                                           " (", sprintf( res$OAPR_at_prevalence_lwr[1], fmt=fmt_odds ), ", ", sprintf( res$OAPR_at_prevalence_upr[1], fmt=fmt_odds ), ")", sep="")
+    
+  }
+
   
   # #---------------------------------------------------------------------------------------------.
   # # Diagnostic likelihood ratios with normal approximation
@@ -299,59 +311,3 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
   ## Return output table
   return(res)
 }
-
-# # ---------------------------------------------------------------------------------------------.
-# # # Examples for testing ####
-# #  function tested on 2022-02-08 by Jan Wiemer:
-# #   + function run three times for two data settings: (a) without and (b) with missing values
-# #   + results compared with table output printed to console:
-# #     review correct counts, compare performance estimates with manual computations
-# # 
-# library(dplyr)
-# 
-# # Create dataset
-# set.seed(1529)
-# cl = c("pos","neg")
-# result <- NULL
-# for(i in 1:3){
-#   reference_results = sample(x=cl, size=100, replace=T)
-#   bm_results        = sample(x=cl, size=100, replace=T)
-#   d1 <- tibble( reference_results, bm_results )
-#   print( addmargins( table( ref=d1$reference_results, bm=d1$bm_results, useNA="a") ) )
-#   # debug(diagn_perf)
-#   result <- bind_rows( result, diagn_perf( d1, ref_outcome="reference_results", ref_pos="pos", test_outcome="bm_results", test_pos="pos" ) )
-#   # undebug(diagn_perf)
-# }
-# write_csv(result, file="../results/diagnostic-performance_test-run_2022-02-08.csv")
-# 
-# set.seed(1529)
-# cl = c("pos","neg")
-# result <- NULL
-# for(i in 1:3){
-#   reference_results = sample(x=cl, size=150, replace=T)
-#   reference_results[sample(150,20)] <- NA
-#   bm_results        = sample(x=cl, size=150, replace=T)
-#   bm_results[sample(150,50)] <- NA
-#   d1 <- tibble( reference_results, bm_results )
-#   print( addmargins( table( ref=d1$reference_results, bm=d1$bm_results, useNA="a") ) )
-#   # debug(diagn_perf)
-#   result <- bind_rows( result, diagn_perf( d1, ref_outcome="reference_results", ref_pos="pos", test_outcome="bm_results", test_pos="pos" ) )
-#   # undebug(diagn_perf)
-# }
-# write_csv(result, file="../results/diagnostic-performance_test-run2_2022-02-08.csv")
-# 
-# res1 = t(diagn_perf( d1, ref_outcome="reference_results", ref_pos="pos", test_outcome="bm_results", test_pos="pos", conf_level=0.9, n_dig_prop=1, n_dig_lr=5 ))
-# res2 = t(diagn_perf( d1, ref_outcome="reference_results", ref_pos="pos", test_outcome="bm_results", test_pos="pos", conf_level=0.9, conf_type="Clopper-Pearson", n_dig_prop=1, n_dig_lr=5 ))
-
-#---------------------------------------------------------------------------------------------.
-# examplary specification of variables for PRAECIS data
-
-# d = die
-# ref_outcome = "outspe"
-# ref_pos = "Yes"
-# test_outcome = "ratio_binc"
-# test_pos = "positive"
-# conf_level=0.95
-# conf_type="Wilson"
-# n_dig_prop=2
-
