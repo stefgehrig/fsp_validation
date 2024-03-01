@@ -277,17 +277,17 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
       stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
         round(res$OAPR_at_prevalence[1], 8) == round( se / ((1-sp) * (1-prevalence)) * prevalence, 8)
       )
-      res$OAPR_at_prevalence_lwr[1] = res$PPV_at_prevalence_lwr[1] / (1-res$PPV_at_prevalence_lwr[1])
-      res$OAPR_at_prevalence_upr[1] = res$PPV_at_prevalence_upr[1] / (1-res$PPV_at_prevalence_upr[1])
-      res$OAPR_at_prevalence_str[1] = paste( sprintf( res$OAPR_at_prevalence[1], fmt=fmt_odds ),
-                                             " (", sprintf( res$OAPR_at_prevalence_lwr[1], fmt=fmt_odds ), ", ", sprintf( res$OAPR_at_prevalence_upr[1], fmt=fmt_odds ), ")", sep="")
       
+      # delta method approximation for variance of odds
+      res$OAPR_at_prevalence_lwr[1] = res$PPV_at_prevalence[1] - sqrt(res$PPV_at_prevalence[1] / (n * (1-res$PPV_at_prevalence[1])^3)) * qnorm(0.975)
+      res$OAPR_at_prevalence_upr[1] = res$PPV_at_prevalence[1] + sqrt(res$PPV_at_prevalence[1] / (n * (1-res$PPV_at_prevalence[1])^3)) * qnorm(0.975)
+      res$OAPR_at_prevalence_str[1] = paste( paste0("1:", sprintf( janitor::round_half_up(1/o,0), fmt=fmt_odds )),
+                                             " (", paste0("1:", sprintf( janitor::round_half_up(1/(res$OAPR_at_prevalence_lwr[1]),0), fmt=fmt_odds )), ", ", 
+                                             paste0("1:", sprintf( janitor::round_half_up(1/(res$OAPR_at_prevalence_upr),0), fmt=fmt_odds )), ")", sep="")
       
     }
     
   }
-
-  
   # #---------------------------------------------------------------------------------------------.
   # # Diagnostic likelihood ratios with normal approximation
   # # formulas for CI-computation taken from R-package reportROC 
