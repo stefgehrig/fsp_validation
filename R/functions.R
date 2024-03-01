@@ -115,9 +115,9 @@ append_data_tables <- function(oview, ids_to_compute){
                                openxlsx::read.xlsx(file, sheet = sheet)
                              ) %>% 
                                # correct id column name for outcome data due to inconsistent naming scheme
-                               rename_with(.fn = ~ paste0("patient_", .x),
-                                           .cols = any_of("id")) %>% 
-                               # correct outcome columns where some strings have irregular whitespace
+                               rename_with(.fn = ~ "patient_id",
+                                           .cols = any_of(c("id", "patient_id"))) %>% 
+                               # correct outcome columns where some strings have irregular white space
                                mutate(across(contains("Pregnancy.outcome"),
                                              ~trimws(.x, which = "both")))
                              ))

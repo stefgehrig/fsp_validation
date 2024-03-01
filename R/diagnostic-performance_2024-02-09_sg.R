@@ -49,7 +49,7 @@
 ################################################################################
 diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos, 
                         prevalence,
-                        conf_level=0.95, conf_type="Wilson", n_dig_prop=2, n_dig_lr=2, n_dig_odds=3, ...){
+                        conf_level=0.95, conf_type="Wilson", n_dig_prop=2, n_dig_lr=2, n_dig_odds=0, ...){
   
   # check if positive class and negative class (entry not positive and not missing) are both found in the respective data columns
   
@@ -187,9 +187,9 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
   tp_modified <- (tp+fp+fn+tn) * (prevalence)   * (tp / (fn+tp))
   # note: this method should only work well in terms of correct coverage if prevalence in data and 
   # desired prevalence are roughly of comparable magnitude. (prevalence-corrected point estimates
-  # are always correct.)
+  # for NPV, PPV and OAPR are always correct and are equivalent with the formula from the validation plan.)
   # the "modified sample size" of the proportion estimation for NPV and PPV is not controlled in 
-  # this approach (only the full sample size in the ontingency table, i.e., sum of margins), which can lead to 
+  # this approach (only the full sample size in the contingency table, i.e., sum of margins), which can lead to 
   # over- and underestimation of uncertainty. ideally, one would derive a test or interval
   # from first principles or introduce further constraints on the "modified sample size".
 
@@ -278,16 +278,29 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
         round(res$OAPR_at_prevalence[1], 8) == round( se / ((1-sp) * (1-prevalence)) * prevalence, 8)
       )
       
-      # delta method approximation for variance of odds
-      res$OAPR_at_prevalence_lwr[1] = res$PPV_at_prevalence[1] - sqrt(res$PPV_at_prevalence[1] / (n * (1-res$PPV_at_prevalence[1])^3)) * qnorm(0.975)
-      res$OAPR_at_prevalence_upr[1] = res$PPV_at_prevalence[1] + sqrt(res$PPV_at_prevalence[1] / (n * (1-res$PPV_at_prevalence[1])^3)) * qnorm(0.975)
-      res$OAPR_at_prevalence_str[1] = paste( paste0("1:", sprintf( janitor::round_half_up(1/o,0), fmt=fmt_odds )),
-                                             " (", paste0("1:", sprintf( janitor::round_half_up(1/(res$OAPR_at_prevalence_lwr[1]),0), fmt=fmt_odds )), ", ", 
-                                             paste0("1:", sprintf( janitor::round_half_up(1/(res$OAPR_at_prevalence_upr),0), fmt=fmt_odds )), ")", sep="")
-      
+      if(!res$PPV_at_prevalence[1] %in% c(0,1)){
+        se_logodds <-
+          msm::deltamethod(
+            g = ~log(x1 / (1 - x1)),
+            # log-odds transformation
+            mean = res$PPV_at_prevalence[1],
+            # binomial expectation estimate PPV
+            cov = res$PPV_at_prevalence[1] *
+              (1 - res$PPV_at_prevalence[1]) / (tp_modified + fp_modified),
+            # binomial variance estimate PPV
+            ses = TRUE
+          )
+        
+        res$OAPR_at_prevalence_lwr[1] = exp(log(res$OAPR_at_prevalence[1]) - se_logodds* qnorm(0.975))
+        res$OAPR_at_prevalence_upr[1] = exp(log(res$OAPR_at_prevalence[1]) + se_logodds* qnorm(0.975))
+        res$OAPR_at_prevalence_str[1] = paste0("1:", sprintf( janitor::round_half_up(1/res$OAPR_at_prevalence[1],n_dig_odds), fmt=fmt_odds ))
+        
+      }
     }
     
   }
+  
+  
   # #---------------------------------------------------------------------------------------------.
   # # Diagnostic likelihood ratios with normal approximation
   # # formulas for CI-computation taken from R-package reportROC 
