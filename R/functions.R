@@ -598,3 +598,88 @@ append_test_results <- function(data, pval_prior_vs_adj){
   )
   
 }
+
+
+#####################################################################################
+# function: delta method for ppvs, oaprs, nps modified by a new presumed prevalence #
+#####################################################################################
+delta_log <- function(tp, fp, fn, tn, prevalence_desired, estimand = "ppv", conf_level = 0.95){
+  
+  est_dr  <- tp/(fn + tp)
+  est_fpr <- fp/(fp + tn)
+  var_dr  <- est_dr * (1-est_dr) / (fn + tp)
+  var_fpr <- est_fpr * (1-est_fpr) / (fp + tn)
+  vcov <- matrix(c(var_dr, 0, 0, var_fpr), nrow = 2)
+  
+  # work with agresti-coull / wilson shrunken estimates and variances for proportions:
+  est_dr_inflated  <- (tp+2)/(fn + tp+4)
+  est_fpr_inflated <- (fp+2)/(fp + tn+4)
+  var_dr_inflated  <- est_dr_inflated * (1-est_dr_inflated) / (fn + tp+4)
+  var_fpr_inflated <- est_fpr_inflated * (1-est_fpr_inflated) / (fp + tn+4)
+  vcov_inflated <- matrix(c(var_dr_inflated, 0, 0, var_fpr_inflated), nrow = 2)
+  
+  if(estimand == "ppv"){     
+    
+    form <- sprintf("~ x1 * %f / (x1 * %f + x2 * (1 - %f))",
+                    prevalence_desired, prevalence_desired, prevalence_desired)
+    se <- msm::deltamethod(
+      g = as.formula(form), 
+      mean = c(est_dr_inflated, est_fpr_inflated),
+      cov = vcov_inflated,
+      ses = TRUE
+    )
+    est_desired <- est_dr * prevalence_desired / (est_dr * prevalence_desired + est_fpr * (1 - prevalence_desired))
+    est_desired_inflated <- est_dr_inflated * prevalence_desired / (est_dr_inflated * prevalence_desired + est_fpr_inflated * (1 - prevalence_desired))
+    
+    tibble(
+      estimand = estimand,
+      method = "delta_log",
+      est = est_desired,
+      lwr = pmax(est_desired_inflated - qnorm(1-(1-conf_level)/2) * se, 0),
+      upr = pmin(est_desired_inflated + qnorm(1-(1-conf_level)/2) * se, 1)
+    )
+    
+  } else if(estimand == "npv"){
+    
+    form <- sprintf("~ x2 * (1 - %f) / (x2 * (1 - %f) + (1 - x1) * %f)",
+                    prevalence_desired, prevalence_desired, prevalence_desired)
+    se <- msm::deltamethod(
+      g = as.formula(form), 
+      mean = c(est_dr_inflated, 1-est_fpr_inflated),
+      cov = vcov_inflated,
+      ses = TRUE
+    )
+    est_desired <- (1-est_fpr) * (1 - prevalence_desired)/ ((1 - est_fpr) * (1 - prevalence_desired) + (1 - est_dr) * prevalence_desired)
+    est_desired_inflated <- (1-est_fpr_inflated) * (1 - prevalence_desired)/ ((1 - est_fpr_inflated) * (1 - prevalence_desired) + (1 - est_dr_inflated) * prevalence_desired)
+    
+    tibble(
+      estimand = estimand,
+      method = "delta_log",
+      est = est_desired,
+      lwr = pmax(est_desired_inflated - qnorm(1-(1-conf_level)/2) * se, 0),
+      upr = pmin(est_desired_inflated + qnorm(1-(1-conf_level)/2) * se, 1)
+    )
+    
+  } else if(estimand == "oapr"){
+    
+    # work with log-odds
+    form <- sprintf("~ log(x1 / x2 * %f / (1 - %f))",
+                    prevalence_desired, prevalence_desired)
+    se_log <- msm::deltamethod(
+      g = as.formula(form), 
+      mean = c(est_dr, est_fpr),
+      cov = vcov,
+      ses = TRUE
+    )
+    est_desired <- est_dr / est_fpr * prevalence_desired / (1 - prevalence_desired)
+    
+    tibble(
+      estimand = estimand,
+      method = "delta_log",
+      est = est_desired,
+      lwr = pmax(exp(log(est_desired) - qnorm(1-(1-conf_level)/2) * se_log), 0),
+      upr = pmin(exp(log(est_desired) + qnorm(1-(1-conf_level)/2) * se_log), 1)
+    )
+    
+  }
+}

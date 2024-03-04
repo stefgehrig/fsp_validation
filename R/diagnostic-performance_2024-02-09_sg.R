@@ -178,13 +178,13 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
   res$n_total[1] <- n_total <- ct["Sum","Sum"]
   res$mis_ref_or_test[1] = n_total - n_ref_and_test
   
-  # ad-hoc method for inference on prevalence-corrected contingeny tables:
+  # ad-hoc method for inference on prevalence-corrected contingeny tables: [abandoned in favor of a delta method approach below]
   # create a MODIFIED contintency table, which only changes the prevalence to accord to pre-specified one
   # (the entries are allowed to be non-integer counts; all upcoming statistical functions can deal with this)
-  tn_modified <- (tp+fp+fn+tn) * (1-prevalence) * (tn / (tn+fp))
-  fp_modified <- (tp+fp+fn+tn) * (1-prevalence) * (fp / (tn+fp))
-  fn_modified <- (tp+fp+fn+tn) * (prevalence)   * (fn / (fn+tp))
-  tp_modified <- (tp+fp+fn+tn) * (prevalence)   * (tp / (fn+tp))
+  # tn_modified <- (tp+fp+fn+tn) * (1-prevalence) * (tn / (tn+fp))
+  # fp_modified <- (tp+fp+fn+tn) * (1-prevalence) * (fp / (tn+fp))
+  # fn_modified <- (tp+fp+fn+tn) * (prevalence)   * (fn / (fn+tp))
+  # tp_modified <- (tp+fp+fn+tn) * (prevalence)   * (tp / (fn+tp))
   # note: this method should only work well in terms of correct coverage if prevalence in data and 
   # desired prevalence are roughly of comparable magnitude. (prevalence-corrected point estimates
   # for NPV, PPV and OAPR are always correct and are equivalent with the formula from the validation plan.)
@@ -242,57 +242,36 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
     res$DR_str[1] = paste( sprintf( 100*res$DR[1], fmt=fmt ), 
                            "% (", sprintf( 100*res$DR_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$DR_upr[1], fmt=fmt ), ")", sep="")
     
-    
     # NPV at a specified prevalence
-    NPV_at_prevalence <- binconf(x=tn_modified, n=tn_modified+fn_modified, alpha=1-conf_level, method=CI_method)
+    NPV_at_prevalence <- delta_log(tp, fp, fn, tn, prevalence, "npv", conf_level)
     
-    stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
-      round(NPV_at_prevalence[1,"PointEst"], 8) == round(sp * (1 - prevalence) / (sp * (1 - prevalence) + (1 - se) * prevalence), 8)
-    )
-    
-    res$NPV_at_prevalence[1]     = NPV_at_prevalence[1,"PointEst"]
-    res$NPV_at_prevalence_lwr[1] = NPV_at_prevalence[1,"Lower"]
-    res$NPV_at_prevalence_upr[1] = NPV_at_prevalence[1,"Upper"]
+    res$NPV_at_prevalence[1]     = sp * (1 - prevalence) / (sp * (1 - prevalence) + (1 - se) * prevalence)
+    res$NPV_at_prevalence_lwr[1] = NPV_at_prevalence$lwr
+    res$NPV_at_prevalence_upr[1] = NPV_at_prevalence$upr
     res$NPV_at_prevalence_str[1] = paste( sprintf( 100*res$NPV_at_prevalence[1], fmt=fmt ),
                                           "% (", sprintf( 100*res$NPV_at_prevalence_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$NPV_at_prevalence_upr[1], fmt=fmt ), ")", sep="")
     
     if(!no_predicted_cases){
       
       # PPV at a specified prevalence
-      PPV_at_prevalence <- binconf(x=tp_modified, n=tp_modified+fp_modified, alpha=1-conf_level, method=CI_method)
+      PPV_at_prevalence <- delta_log(tp, fp, fn, tn, prevalence, "ppv", conf_level)
       
-      stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
-        round(PPV_at_prevalence[1,"PointEst"], 12) ==  round(se * prevalence / (se * prevalence + (1 - sp) * (1-prevalence)), 12)
-      )
-      
-      res$PPV_at_prevalence[1]     = PPV_at_prevalence[1,"PointEst"]
-      res$PPV_at_prevalence_lwr[1] = PPV_at_prevalence[1,"Lower"]
-      res$PPV_at_prevalence_upr[1] = PPV_at_prevalence[1,"Upper"]
+      res$PPV_at_prevalence[1]     = se * prevalence / (se * prevalence + (1 - sp) * (1-prevalence))
+      res$PPV_at_prevalence_lwr[1] = PPV_at_prevalence$lwr
+      res$PPV_at_prevalence_upr[1] = PPV_at_prevalence$upr
       res$PPV_at_prevalence_str[1] = paste( sprintf( 100*res$PPV_at_prevalence[1], fmt=fmt ),
                                             "% (", sprintf( 100*res$PPV_at_prevalence_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$PPV_at_prevalence_upr[1], fmt=fmt ), ")", sep="")
       
       # OAPR
       res$OAPR_at_prevalence[1] <- res$PPV_at_prevalence[1] / (1-res$PPV_at_prevalence[1])
-      
-      stopifnot( # check the point estimation approach implemented here against formula in validation plan. they should be equivalent
-        round(res$OAPR_at_prevalence[1], 8) == round( se / ((1-sp) * (1-prevalence)) * prevalence, 8)
-      )
-      
+
       if(!res$PPV_at_prevalence[1] %in% c(0,1)){
-        se_logodds <-
-          msm::deltamethod(
-            g = ~log(x1 / (1 - x1)),
-            # log-odds transformation
-            mean = res$PPV_at_prevalence[1],
-            # binomial expectation estimate PPV
-            cov = res$PPV_at_prevalence[1] *
-              (1 - res$PPV_at_prevalence[1]) / (tp_modified + fp_modified),
-            # binomial variance estimate PPV
-            ses = TRUE
-          )
+
+        OAPR_at_prevalence <- delta_log(tp, fp, fn, tn, prevalence, "oapr", conf_level)
+        stopifnot(round(res$OAPR_at_prevalence[1], 8) == round(OAPR_at_prevalence$est, 8))
         
-        res$OAPR_at_prevalence_lwr[1] = exp(log(res$OAPR_at_prevalence[1]) - se_logodds* qnorm(0.975))
-        res$OAPR_at_prevalence_upr[1] = exp(log(res$OAPR_at_prevalence[1]) + se_logodds* qnorm(0.975))
+        res$OAPR_at_prevalence_lwr[1] = OAPR_at_prevalence$lwr
+        res$OAPR_at_prevalence_upr[1] = OAPR_at_prevalence$upr
         res$OAPR_at_prevalence_str[1] = paste0("1:", sprintf( janitor::round_half_up(1/res$OAPR_at_prevalence[1],n_dig_odds), fmt=fmt_odds ))
         
       }
