@@ -21,7 +21,7 @@
 ##    +  test_pos:     value of pred_outcome to be considered positive -      ##
 ##                     all other values are considered negative)              ##
 ##    +  prevalence:   prevalence at which NPV and PPV are compuated;         ##
-##                     cannot be left empty.                                  ##
+##                     if NA, prevalence-dependent metrics are skipped        ##
 ##    +  conf_level:   level for 2-sided confidence intervals                 ##
 ##    +  conf_type:    CIs of Sensitivity, Specificity, FPR, PPV, NPV         ##
 ##                     according to "Wilson" or acc. to "Clopper-Pearson"     ##
@@ -243,39 +243,44 @@ diagn_perf <- function( d, ref_outcome, ref_pos, test_outcome, test_pos,
     res$DR_str[1] = paste( sprintf( 100*res$DR[1], fmt=fmt ), 
                            "% (", sprintf( 100*res$DR_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$DR_upr[1], fmt=fmt ), ")", sep="")
     
-    # NPV at a specified prevalence
-    NPV_at_prevalence <- delta_log(tp, fp, fn, tn, prevalence, "npv", conf_level)
-    
-    res$NPV_at_prevalence[1]     = sp * (1 - prevalence) / (sp * (1 - prevalence) + (1 - se) * prevalence)
-    res$NPV_at_prevalence_lwr[1] = NPV_at_prevalence$lwr
-    res$NPV_at_prevalence_upr[1] = NPV_at_prevalence$upr
-    res$NPV_at_prevalence_str[1] = paste( sprintf( 100*res$NPV_at_prevalence[1], fmt=fmt ),
-                                          "% (", sprintf( 100*res$NPV_at_prevalence_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$NPV_at_prevalence_upr[1], fmt=fmt ), ")", sep="")
+    if(!is.na(prevalence)){
+      # NPV at a specified prevalence
+      NPV_at_prevalence <- delta_log(tp, fp, fn, tn, prevalence, "npv", conf_level)
+      
+      res$NPV_at_prevalence[1]     = sp * (1 - prevalence) / (sp * (1 - prevalence) + (1 - se) * prevalence)
+      res$NPV_at_prevalence_lwr[1] = NPV_at_prevalence$lwr
+      res$NPV_at_prevalence_upr[1] = NPV_at_prevalence$upr
+      res$NPV_at_prevalence_str[1] = paste( sprintf( 100*res$NPV_at_prevalence[1], fmt=fmt ),
+                                            "% (", sprintf( 100*res$NPV_at_prevalence_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$NPV_at_prevalence_upr[1], fmt=fmt ), ")", sep="")
+      }
+
     
     if(!no_predicted_cases){
       
-      # PPV at a specified prevalence
-      PPV_at_prevalence <- delta_log(tp, fp, fn, tn, prevalence, "ppv", conf_level)
-      
-      res$PPV_at_prevalence[1]     = se * prevalence / (se * prevalence + (1 - sp) * (1-prevalence))
-      res$PPV_at_prevalence_lwr[1] = PPV_at_prevalence$lwr
-      res$PPV_at_prevalence_upr[1] = PPV_at_prevalence$upr
-      res$PPV_at_prevalence_str[1] = paste( sprintf( 100*res$PPV_at_prevalence[1], fmt=fmt ),
-                                            "% (", sprintf( 100*res$PPV_at_prevalence_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$PPV_at_prevalence_upr[1], fmt=fmt ), ")", sep="")
-      
-      # OAPR
-      res$OAPR_at_prevalence[1] <- res$PPV_at_prevalence[1] / (1-res$PPV_at_prevalence[1])
-
-      if(!res$PPV_at_prevalence[1] %in% c(0,1)){
-
-        OAPR_at_prevalence <- delta_log(tp, fp, fn, tn, prevalence, "oapr", conf_level)
-        stopifnot(round(res$OAPR_at_prevalence[1], 8) == round(OAPR_at_prevalence$est, 8))
+      if(!is.na(prevalence)){
+        # PPV at a specified prevalence
+        PPV_at_prevalence <- delta_log(tp, fp, fn, tn, prevalence, "ppv", conf_level)
         
-        res$OAPR_at_prevalence_lwr[1] = OAPR_at_prevalence$lwr
-        res$OAPR_at_prevalence_upr[1] = OAPR_at_prevalence$upr
-        res$OAPR_at_prevalence_str[1] = paste0("1:", sprintf( janitor::round_half_up(1/res$OAPR_at_prevalence[1],n_dig_odds), fmt=fmt_odds ))
+        res$PPV_at_prevalence[1]     = se * prevalence / (se * prevalence + (1 - sp) * (1-prevalence))
+        res$PPV_at_prevalence_lwr[1] = PPV_at_prevalence$lwr
+        res$PPV_at_prevalence_upr[1] = PPV_at_prevalence$upr
+        res$PPV_at_prevalence_str[1] = paste( sprintf( 100*res$PPV_at_prevalence[1], fmt=fmt ),
+                                              "% (", sprintf( 100*res$PPV_at_prevalence_lwr[1], fmt=fmt ), ", ", sprintf( 100*res$PPV_at_prevalence_upr[1], fmt=fmt ), ")", sep="")
         
+        # OAPR
+        res$OAPR_at_prevalence[1] <- res$PPV_at_prevalence[1] / (1-res$PPV_at_prevalence[1])
+        
+        if(!res$PPV_at_prevalence[1] %in% c(0,1)){
+          
+          OAPR_at_prevalence <- delta_log(tp, fp, fn, tn, prevalence, "oapr", conf_level)
+          stopifnot(round(res$OAPR_at_prevalence[1], 8) == round(OAPR_at_prevalence$est, 8))
+          
+          res$OAPR_at_prevalence_lwr[1] = OAPR_at_prevalence$lwr
+          res$OAPR_at_prevalence_upr[1] = OAPR_at_prevalence$upr
+          res$OAPR_at_prevalence_str[1] = paste0("1:", sprintf( janitor::round_half_up(1/res$OAPR_at_prevalence[1],n_dig_odds), fmt=fmt_odds ))
+        }
       }
+
     }
     
   }

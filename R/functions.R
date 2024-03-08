@@ -306,9 +306,9 @@ compute_numeric_prevalences <- function(prevalence, sampledata){
   # case should not exist; either given as string of digits or NA for existing endpoints
   stopifnot(!grepl("\\D", prevalence))
   
-  # prevalence from sample data is used:
+  # no prevalence-dependent metrics are computed when no prevalence is provided
   if(is.na(prevalence)) {
-    prevalence_numeric <- mean(sampledata$y)
+    prevalence_numeric <- NA_real_
     
   } else if(as.numeric(prevalence)%%1==0) {
     # prevalence is given as reciprocal in form of an integer:
