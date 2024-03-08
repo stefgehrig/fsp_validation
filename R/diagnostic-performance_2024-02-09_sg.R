@@ -10,7 +10,7 @@
 ## Function diagn_perf                                                        ##
 ##                                                                            ##
 ## Computation of diagnostic performance measures with Wilson confidence      ##
-## intervals: Sensitivity, Specificity, FPR, PPV, NPV, LR+, LR-               ##
+## intervals: Sensitivity, Specificity, FPR, PPV, NPV                         ##
 ##                                                                            ##
 ## Input:                                                                     ##
 ##    +  d:            dataframe from which to extract the data               ##
