@@ -317,8 +317,9 @@ compute_numeric_prevalences <- function(prevalence, sampledata){
     # not supported cases
     prevalence_numeric <- NA_real_
   }
-  
-  stopifnot(prevalence_numeric >= 0 & prevalence_numeric <= 1)
+  if(!is.na(prevalence)){
+    stopifnot(prevalence_numeric >= 0 & prevalence_numeric <= 1)
+  }
   cat("transformed prevalence:", 
       format(prevalence, width = 5), "\u2192", 
       format(round(prevalence_numeric, 5), nsmall = 5), "\n")
