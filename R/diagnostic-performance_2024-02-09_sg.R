@@ -4,6 +4,7 @@
 # - allow to specify a prevalence for NPV / PPV calculations and their intervals
 # - added calculations for OAPR
 # - allow for absence of positive cases, ensuring constant dimension of contingency table
+# - special delta method confidence intervals for prevalence adjusted metrics
 
 ################################################################################
 ## Function diagn_perf                                                        ##
