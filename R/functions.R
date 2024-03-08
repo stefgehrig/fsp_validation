@@ -677,8 +677,8 @@ delta_log <- function(tp, fp, fn, tn, prevalence_desired, estimand = "ppv", conf
       estimand = estimand,
       method = "delta_log",
       est = est_desired,
-      lwr = pmax(exp(log(est_desired) - qnorm(1-(1-conf_level)/2) * se_log), 0),
-      upr = pmin(exp(log(est_desired) + qnorm(1-(1-conf_level)/2) * se_log), 1)
+      lwr = exp(log(est_desired) - qnorm(1-(1-conf_level)/2) * se_log),
+      upr = exp(log(est_desired) + qnorm(1-(1-conf_level)/2) * se_log)
     )
     
   }
