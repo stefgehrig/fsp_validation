@@ -266,13 +266,14 @@ find_cutoff_from_fpr_string_percent <- function(fpr_cutoff_string, sampledata){
   
   fpr_cutoff_numeric <- parse_number(fpr_cutoff_string)/100
   
-  df_cutoff <- as_tibble(roc(sampledata, y, pr, ret = "coords", quiet = TRUE)) %>% 
+  df_cutoff <- as_tibble(roc(sampledata, y, pr, ret = "coords", quiet = TRUE, direction = "<")) %>% 
     mutate(fpr = 1-specificity) %>% 
     filter(fpr < fpr_cutoff_numeric) %>% 
     filter(fpr == max(fpr)) %>% 
     select(threshold, fpr)
   
-  return(max(df_cutoff$threshold)) # use threshold that maximizes DR, if same fpr holds at many thresholds
+  return(min(df_cutoff$threshold)) # use smallest threshold (i.e., that maximizes DR), 
+  # if same fpr holds at many thresholds
   
 }
 
@@ -560,7 +561,6 @@ run_validation_tests <- function(data, data_prior = NULL, pval_prior_vs_adj = NU
   return(pvals)
 }
 
-
 # run validation hypothesis tests
 append_test_results <- function(data, pval_prior_vs_adj){
   
@@ -579,6 +579,9 @@ append_test_results <- function(data, pval_prior_vs_adj){
       
       analysis_id_prior <- data$Analysis_ID[data$Agorithm_ID == data$Agorithm_ID[i] & # same algorithm ...
                                               data$Cohort_ID == data$Cohort_ID[i] & # ... and same pregnancies ...
+                                              # and, except for last "_[suffix]", same data set id name root ...
+                                              sub("_[^_]+$", "", data$Data_Set_ID) == sub("_[^_]+$", "", data$Data_Set_ID[i]) &
+                                            
                                               endsWith(data$Analysis_ID, "_MFs")] # ... but maternal factors only
       analysis_id_prior <- unique(analysis_id_prior)
       stopifnot(length(analysis_id_prior) == 1L)
